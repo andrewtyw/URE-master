@@ -71,7 +71,7 @@ class surpervise_learner(nn.Module):
     def __init__(self,args,sccl_bert:SCCL_BERT,optimizer):
         super(surpervise_learner,self).__init__()
         self.args = args
-        self.device = torch.device('cuda:{}'.format(args.cuda_index)) if args.use_gpu else torch.device('cpu')
+        self.device = torch.device('cuda:{}'.format(args.cuda_index))
         self.CEloss = nn.CrossEntropyLoss(reduction='none')
         self.sccl_bert = sccl_bert
         self.optimizer = optimizer
@@ -100,11 +100,11 @@ Second_stage:
 
 def adjust_learning_rate(optimizer,epoch,max_epoch,scale):
     if epoch<0.25*max_epoch:
-        lr = (5e-5)*3
+        lr = (5e-6)*3
     elif epoch < 0.5 * max_epoch:
-        lr = (5e-5)*2
+        lr = (5e-6)*2
     else:
-        lr = 5e-5
+        lr = 5e-6
     # if epoch<0.25*max_epoch:
     #     lr = (2e-5)*10
     # elif epoch < 0.5 * max_epoch:
@@ -265,16 +265,13 @@ def second_stage(args,sccl_model:SCCL_BERT,train_loader,train_data,data_for_sele
 
 def o2u_main(args):
     
-
+    print(args)
     set_global_random_seed(args.seed)
     batch_size = args.batch_size
     max_len = args.max_len
     lr = args.lr
     lr_scale = args.lr_scale
-    if args.use_gpu:
-        device = torch.device('cuda:{}'.format(args.cuda_index))
-    else:
-        device = torch.device('cpu')
+    device = torch.device('cuda:{}'.format(args.cuda_index))
     args.device = device
     bert_model  = SentenceTransformer(args.model_dir)
     # data_loader
@@ -288,7 +285,7 @@ def o2u_main(args):
 
 
     train_dataset = Train_dataset(train_data)
-    train_loader = util_data.DataLoader(train_dataset, batch_size=64, shuffle=False, num_workers=0)
+    train_loader = util_data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
     sccl_model = SCCL_BERT(bert_model,max_len,device,args.n_rel,True,tags).to(device)
     args.check_point_path = os.path.join(CURR_DIR,"temp/temp.pt")
     first_stage(args,sccl_model=sccl_model,
@@ -298,7 +295,7 @@ def o2u_main(args):
 
 
     # 按照更小的batch_size重新生成train_loader
-    train_loader = util_data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
+    train_loader = util_data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     args.n_epoch = 5
     mask, loss_record, noisy_index = second_stage(args,
                         sccl_model=sccl_model,
@@ -389,35 +386,31 @@ if __name__=="__main__":
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cuda_index", type=int,default=3, help="as named")
+    parser.add_argument("--cuda_index", type=int,default=1, help="as named")
     parser.add_argument("--batch_size", type=int,default=32, help="as named")
     # 是否为2分类的O2U
-    parser.add_argument("--mode",type=int,default=2,help="跑O2U的模式,TAC: 0表示42个类, 1表示仅仅neg,  2表示仅仅pos; WIKI:3")
-    # epoch
     parser.add_argument("--n_epoch", type=int,default=5, help="as named")
-    parser.add_argument("--use_gpu", type=bool,default=True, help="as named")
 
-    """wiki"""
-    # parser.add_argument("--e_tags_path", type=str,default="/home/tywang/myURE/URE/WIKI/typed/etags.pkl", help="as named")
-    # parser.add_argument("--train_path", type=str,default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/wiki_FewShot_train_num40320_top1_0.4468_Xlarge.pkl", help="as named")
-    """tac"""
-    parser.add_argument("--e_tags_path", type=str,default="/home/tywang/URE-master/data/tac/tags.pkl", help="as named")
-    parser.add_argument("--train_path", type=str,default="/home/tywang/URE-master/data/tac/annotated/train_num9710_top1_0.5799.pkl", help="as named")
-
-
-
-    # 学习率调整\
     parser.add_argument('--lr', type=float, default=1e-5,help='learning rate')
-    # parser.add_argument('--max_lr', type=float, default=15e-5,help='learning rate')
-    parser.add_argument('--max_lr', type=float, default=10e-5,help='learning rate')
-    parser.add_argument('--min_lr', type=float, default=1e-6,help='learning rate')
+    parser.add_argument('--max_lr', type=float, default=5e-6,help='learning rate')
+    parser.add_argument('--min_lr', type=float, default=1e-7,help='learning rate')
     parser.add_argument('--lr_scale', type=int, default=100, help='as named')
-    # 文件保存
-    parser.add_argument("--o2u_model_path",type=str,default="/data/tywang/O2U_model",help="as named")
+
     parser.add_argument('--seed', type=int, default=16, help='as named')
     parser.add_argument('--model_dir', type=str, default='/data/transformers/bert-base-uncased', help='as named')
     parser.add_argument('--max_len', type=int, default=64,
                         help='length of input sentence')
+
+
+
+    """wiki"""
+    # parser.add_argument('--dataset', type=str, default="wiki", help='as named')
+    # parser.add_argument("--e_tags_path", type=str,default="/home/tywang/myURE/URE/WIKI/typed/etags.pkl", help="as named")
+    # parser.add_argument("--train_path", type=str,default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/wiki_FewShot_train_num40320_top1_0.4468_Xlarge.pkl", help="as named")
+    """tac"""
     parser.add_argument('--dataset', type=str, default="tac", help='as named')
+    parser.add_argument("--e_tags_path", type=str,default="/home/tywang/URE-master/data/tac/tags.pkl", help="as named")
+    parser.add_argument("--train_path", type=str,default="/home/tywang/URE-master/data/tac/annotated/train_num9710_top1_0.5799.pkl", help="as named")
+
     args = parser.parse_args()
     o2u_main(args)

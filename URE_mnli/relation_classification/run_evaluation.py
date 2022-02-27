@@ -318,5 +318,5 @@ for configuration in config:
             dataset = dict_index(dataset,pos_index)
             top1_acc = sum(np.array(dataset['top1'])==np.array(dataset['label']))/len(dataset['top1'])
             print("tac selected acc:{:.4f}".format(top1_acc))
-        save_path = os.path.join(arguments.generate_data_save_path,"{}_num{}_top1_{:.4f}.pkl".format(arguments.mode,len(dataset['text']),top1_acc))
+        save_path = os.path.join(arguments.generate_data_save_path,"{}_{}.pkl".format(arguments.dataset,arguments.mode))
         save(dataset,save_path)
