@@ -6,7 +6,7 @@ SEED="16"
 CUDA_INDEX="2"
 RATIO=0.05  # 
 echo ${WARMIP_STEPS}
-DATASET="wiki"  # you need to choose a dataset, choice in ["tac","wiki"]
+DATASET="tac"  # you need to choose a dataset, choice in ["tac","wiki"]
 cd ${PROJECT_PATH}"/finetune" 
 # Convert pseudo data into data for training MNLI (3 categories: entailment, contraction, neutral)
 python -u tacred2mnli.py    --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \

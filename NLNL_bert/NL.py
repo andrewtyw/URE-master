@@ -41,7 +41,7 @@ class Train_dataset(Dataset):
     def __getitem__(self, index):
         return {
             'text': self.data['text'][index],
-            'p_label': self.data['p_label'][index],
+            'p_label': self.data['p_label'][index],  # pseudo_label
             'index': self.data['index'][index],
         }
 
@@ -49,18 +49,18 @@ class Train_dataset(Dataset):
         return len(self.data['text'])
 
 
-class Test_dataset(Dataset):
-    def __init__(self, dataset):
-        self.data = dataset
+# class Test_dataset(Dataset):
+#     def __init__(self, dataset):
+#         self.data = dataset
 
-    def __getitem__(self, index):
-        return {
-            'text': self.data['text'][index],
-            'label': self.data['label'][index]
-        }
+#     def __getitem__(self, index):
+#         return {
+#             'text': self.data['text'][index],
+#             'label': self.data['label'][index]
+#         }
 
-    def __len__(self):
-        return len(self.data['text'])
+#     def __len__(self):
+#         return len(self.data['text'])
 
 
 # class NLNL_Net(nn.Module):
@@ -76,6 +76,7 @@ class Test_dataset(Dataset):
 
 
 def NLNL_main(args):
+    print(args)
     set_global_random_seed(args.seed)
     if args.train_path.find("wiki")!=-1:
         mode = "wiki"
@@ -83,6 +84,17 @@ def NLNL_main(args):
         mode = "tac"
     train_data = load(args.train_path)
     train_data['p_label'] = train_data['top1']
+    ##
+    # print basic information of the train_data
+    print("*"*10,"information","*"*10)
+    info_acc = sum(np.array(train_data['p_label'])==np.array(train_data['label']))/len(train_data['p_label'])
+    n_pseudo_label_relation = len(set(train_data['p_label']))
+    print("acc:{:.4f}".format(info_acc))
+    print("n_relation:{}".format(n_pseudo_label_relation))
+    print("N_data:{}".format(len(train_data['p_label'])))
+    print("*"*10,"***********","*"*10)
+    ##
+
     # test_data = load(args.dev_path)
     # if mode=="tac":
     #     pos_index = [i for i,p_label in enumerate(test_data['label']) if p_label!=41]
@@ -258,28 +270,28 @@ def NLNL_main(args):
     
         ##
 
-        indexes = []
-        select_ratio = [0.01,0.05,0.1,0.2,0.5,1.0]
-        # select_ratio = [0.07013,0.3507,0.701,1]
-        for select_rt in select_ratio:
-            selected403  = clean_index[:int(N_train*select_rt)]
-            indexes.append(selected403)
-            Slabel = np.array([train_data['label'][index] for index in selected403])
-            Sp_label = np.array([train_data['p_label'][index] for index in selected403])
-            n_cate = len(set(Sp_label))
-            acc = sum(Slabel==Sp_label)/len(Sp_label)
-            # print("确定的acc:{:.4f}".format(acc))
-            print("前 {} loss 小的数据({})的acc= {}, 类别数:{}".format(select_rt,int(N_train*select_rt),acc,n_cate))
-        if epoch-1==args.epoch:
-            save(indexes,os.path.join(CURR_DIR,"NLNL_index_out/{}_index_epo{}_acc{:.4f}_T{}.pkl".format(mode,epoch,acc,TIME)))
+        # indexes = []
+        # select_ratio = [0.01,0.05,0.1,0.2,0.5,1.0]
+        # # select_ratio = [0.07013,0.3507,0.701,1]
+        # for select_rt in select_ratio:
+        #     selected403  = clean_index[:int(N_train*select_rt)]
+        #     indexes.append(selected403)
+        #     Slabel = np.array([train_data['label'][index] for index in selected403])
+        #     Sp_label = np.array([train_data['p_label'][index] for index in selected403])
+        #     n_cate = len(set(Sp_label))
+        #     acc = sum(Slabel==Sp_label)/len(Sp_label)
+        #     # print("确定的acc:{:.4f}".format(acc))
+        #     print("前 {} loss 小的数据(num:{})的acc= {}, 类别数:{}".format(select_rt,int(N_train*select_rt),acc,n_cate))
+        # if epoch-1==args.epoch:
+        #     save(indexes,os.path.join(CURR_DIR,"NLNL_index_out/{}_index_epo{}_acc{:.4f}_T{}.pkl".format(mode,epoch,acc,TIME)))
         rnge = int(N_train*noise_ratio)
         inds_filt = inds[:rnge]  # loss前N大的index
         recall = float(len(np.intersect1d(inds_filt, inds_noisy))) / float(len(inds_filt)) # 击中noisy的比例
         # precision = float(len(np.intersect1d(inds_filt, inds_noisy))) / float(rnge)
         # print('\tTESTING...loss: %5f, acc: %5f, best_acc: %5f, noisy_acc: %5f'
         #         % (test_loss, test_acc, best_test_acc, recall))
-        print(noise_ratio)
-        print(rnge)
+        # print(noise_ratio)
+        # print(rnge)
 
         ###############################################################################################
         assert train_preds[train_preds < 0].nelement() == 0
@@ -298,18 +310,18 @@ def NLNL_main(args):
         confidence_index = np.argsort(np.array(p_label_confidence))[::-1]  # confidence从大到小排序
         indexes = []
         if mode=="wiki":
-            select_ratio = [0.01,0.05,0.1,0.2,0.5,1.0]
+            select_num = [403,2016,4032,1e20] # number corresponding to(0.01, 0.05, 0.1, 1.0)*n_train (n_train=40320)
         else:
-            select_ratio = [0.07013,0.3507,0.701,1] 
-        for select_rt in select_ratio:
-            selected403  = confidence_index[:int(N_train*select_rt)]
+            select_num = [681,3406,6812,1e20] # number corresponding to(0.01, 0.05, 0.1, 1.0)*n_train (n_train=68124)
+        for select_n in select_num:
+            selected403  = confidence_index[:int(select_n)]
             indexes.append(selected403)
             Slabel = np.array([train_data['label'][index] for index in selected403])
             Sp_label = np.array([train_data['p_label'][index] for index in selected403])
             n_cate = len(set(Sp_label))
             acc = sum(Slabel==Sp_label)/len(Sp_label)
             # print("确定的acc:{:.4f}".format(acc))
-            print("前 {} confidence 大的数据({})的acc= {}, 类别数:{}".format(select_rt,int(N_train*select_rt),acc,n_cate))
+            print("前 {} confidence 大的数据 acc= {}, 类别数:{}".format(select_n,acc,n_cate))
         if epoch+1==args.epoch:
             # select 数据
             ratio = [0.01,0.05,0.1]
@@ -366,7 +378,7 @@ nohup python -u NL_v2.py >/home/tywang/myURE/URE/NLNL_bert/logs/xxx.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=16, help="as named")
     parser.add_argument("--cuda_index", type=int, default=0, help="as named")
-    parser.add_argument('--lr', type=float, default=2e-7, help='learning rate')
+    parser.add_argument('--lr', type=float, default=5e-7, help='learning rate')
     parser.add_argument('--lr_scale', type=int, default=100, help='as named')
     parser.add_argument('--epoch', type=int, default=1, help='as named')
     # parser.add_argument('--cut', type=float, default=0.5, help='as named')
@@ -374,30 +386,30 @@ nohup python -u NL_v2.py >/home/tywang/myURE/URE/NLNL_bert/logs/xxx.log 2>&1 &
     # parser.add_argument('--switch_epoch2', type=int, default=25, help='as named')
 
     """wiki"""
-    parser.add_argument('--n_rel', type=int, default=80, help='as named')
-    parser.add_argument("--train_path", type=str,
-                        default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/wiki_train_num40320_top1_0.4112_Xlarge.pkl", help="as named")
-    # parser.add_argument("--dev_path", type=str,
-    #                     default="/home/tywang/myURE/URE/WIKI/typed/wiki_devwithtype_premnil.pkl", help="as named")
-    parser.add_argument("--e_tags_path", type=str,
-                        default="/home/tywang/myURE/URE/WIKI/typed/etags.pkl", help="as named")
-    parser.add_argument("--save_dir", type=str,
-                        default="/home/tywang/URE-master/NLNL_bert/NLNL_out", help="it is used to save imgs")
-    parser.add_argument('--ln_neg', type=int, default=80,
-                        help='number of negative labels on single image for training, equal to n_rel')
+    # parser.add_argument('--n_rel', type=int, default=80, help='as named')
+    # parser.add_argument("--train_path", type=str,
+    #                     default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/wiki_train_num40320_top1_0.4112_Xlarge.pkl", help="as named")
+    # # parser.add_argument("--dev_path", type=str,
+    # #                     default="/home/tywang/myURE/URE/WIKI/typed/wiki_devwithtype_premnil.pkl", help="as named")
+    # parser.add_argument("--e_tags_path", type=str,
+    #                     default="/home/tywang/myURE/URE/WIKI/typed/etags.pkl", help="as named")
+    # parser.add_argument("--save_dir", type=str,
+    #                     default="/home/tywang/URE-master/NLNL_bert/NLNL_out", help="it is used to save imgs")
+    # parser.add_argument('--ln_neg', type=int, default=80,
+    #                     help='number of negative labels on single image for training, equal to n_rel')
 
     """tac"""
-    # parser.add_argument('--n_rel', type=int, default=41, help='as named')
-    # parser.add_argument("--train_path", type=str,
-    #                     default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/tac_NLNL_num9710_acc0.5799_allpos.pkl", help="as named")
-    # # parser.add_argument("--dev_path", type=str,
-    # #                     default="/home/tywang/myURE/URE/O2U_bert/tac_data/whole/test_for_top12.pkl", help="as named")
-    # parser.add_argument("--e_tags_path", type=str,
-    #                     default="/home/tywang/myURE/URE/O2U_bert/tac_data/train_tags.pkl", help="as named")
-    # parser.add_argument("--save_dir", type=str,
-    #                     default="/home/tywang/myURE/URE/NLNL_bert/NLNL_OUT_tac", help="as named")
-    # parser.add_argument('--ln_neg', type=int, default=41,
-    #                     help='number of negative labels on single image for training (ex. 110 for cifar100)')
+    parser.add_argument('--n_rel', type=int, default=41, help='as named')
+    parser.add_argument("--train_path", type=str,
+                        default="/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/tac_NLNL_num9710_acc0.5799_allpos.pkl", help="as named")
+    # parser.add_argument("--dev_path", type=str,
+    #                     default="/home/tywang/myURE/URE/O2U_bert/tac_data/whole/test_for_top12.pkl", help="as named")
+    parser.add_argument("--e_tags_path", type=str,
+                        default="/home/tywang/myURE/URE/O2U_bert/tac_data/train_tags.pkl", help="as named")
+    parser.add_argument("--save_dir", type=str,
+                        default="/home/tywang/URE-master/NLNL_bert/NLNL_out", help="as named")
+    parser.add_argument('--ln_neg', type=int, default=41,
+                        help='number of negative labels on single image for training (ex. 110 for cifar100)')
 
 
     """communal"""
