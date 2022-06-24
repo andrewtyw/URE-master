@@ -41,7 +41,7 @@ parser.add_argument("--config_path", type=str,default="/data/tywang/URE_share/an
 parser.add_argument("--outputs", type=str,default=None, 
                 help="要加载的以及跑好的entailment数据的路径")
 args = parser.parse_args()
-
+print(args)
 
 # 由外部决定的参数
 given_save_path = args.given_save_path

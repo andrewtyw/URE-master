@@ -32,9 +32,9 @@ else
 fi
 
 config_path=${PROJECT_PATH}"/annotation/configs/config_"${DATASET}"_partial_constrain.json"
-annotated_path=${PROJECT_PATH}"/data/annotation_result/"${DATASET}"_annotation_assure.pkl"  # annotated data will save here
-clean_data_path=${specified_save_path}"/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pkl"  # NL产生的clean数据的路径 将会是这个
-check_point_path=${PROJECT_PATH}"/data/model/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pt"  # fine-tune好的NLI的路径 将会是这个
+annotated_path=${PROJECT_PATH}"/data/annotation_result/"${DATASET}"_annotation.pkl"  # annotated data will save here
+clean_data_path=${specified_save_path}"/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pkl"  
+check_point_path=${PROJECT_PATH}"/data/model/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pt" 
 
 
 
@@ -52,11 +52,11 @@ echo
 # download huggingface models
 # if you have already had 'microsoft_deberta-v2-xlarge-mnli' and 'bert-base-uncased', you can skip this
 cd ${PROJECT_PATH}/data/tac
-unzip tac.zip
+unzip -o tac.zip
 python -u ${PROJECT_PATH}/utils/prepare.py --model_save_folder ${model_save_path}
 
 
-# Stage 1: annotate train to get silver data
+# # Stage 1: annotate train to get silver data
 python -u ${PROJECT_PATH}/annotation/run_evaluation.py \
                                 --model_path ${MNLI_PATH} \
                                 --cuda_index ${CUDA_INDEX} \
@@ -72,7 +72,7 @@ python -u ${PROJECT_PATH}/annotation/run_evaluation.py \
 
 
 
-# # # Stage 2: get clean data
+# # # # Stage 2: get clean data
 python -u ${PROJECT_PATH}"/cleaning/NL.py" \
                                     --seed ${SEED} \
                                     --epoch 10  \
@@ -86,7 +86,7 @@ python -u ${PROJECT_PATH}"/cleaning/NL.py" \
 
 
 
-# Stage 3: use clean data to finetune NLI
+# # Stage 3: use clean data to finetune NLI
 cd ${PROJECT_PATH}"/finetune" 
 python -u fintune_mnli.py    --batch_size 6 \
                                 --cuda_index ${CUDA_INDEX} \
@@ -102,7 +102,7 @@ python -u fintune_mnli.py    --batch_size 6 \
                                 --epoch 10 \
                                 --check_point_path ${check_point_path} \
 
-# Finally, use the fintuned NLI to infer on test set
+# # Finally, use the fintuned NLI to infer on test set
 python -u /data/tywang/final_version/URE-master/annotation/run_evaluation.py \
                                 --model_path ${MNLI_PATH} \
                                 --cuda_index ${CUDA_INDEX} \

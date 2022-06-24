@@ -295,7 +295,7 @@ def NLNL_main(args):
             plt.ylabel('number of data')
             plt.grid()
             plt.legend()
-            img_dir = '/data/tywang/URE_share/NL/outputs/imgs/{}_confidence_distribution_epoch{}_T{}.jpg'.format(mode,epoch,TIME)
+            img_dir = os.path.join(CURR_DIR,'output_imgs/{}_confidence_distribution_epoch{}_T{}.jpg'.format(mode,epoch,TIME))
             print("img here: ",img_dir)
             plt.savefig(img_dir)
             plt.clf()
