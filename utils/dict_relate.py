@@ -20,10 +20,8 @@ def dict2list(data:dict):
     return items
 
 def dict_index(data:dict,index_arr):
-    """
-    遍历dict中的元素, 取出在index_arr中的下标
-    """
-    # 以数据的第一个key的value的len作为标准, 其余小于该len的key舍弃
+
+    
     length = len(data[list(data.keys())[0]])
 
     data_copy = copy.deepcopy(data)
@@ -39,7 +37,7 @@ def dict_index(data:dict,index_arr):
             print()
             continue
 
-        # data_copy[k] = [data_copy[k][idx] for idx in index_arr]
+        
 
         if isinstance(data_copy[k],np.ndarray):
             data_copy[k] = np.array([data_copy[k][idx] for idx in index_arr])

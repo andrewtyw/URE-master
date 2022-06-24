@@ -10,7 +10,7 @@ CURR_DIR = str(PATH.parent.absolute())
 sys.path.append(CURR_DIR)
 P = PATH.parent
 print("current dir: ",CURR_DIR)
-for i in range(1):  # add parent path, height = 3
+for i in range(1):  
     P = P.parent
     PROJECT_PATH = str(P.absolute())
     sys.path.append(str(P.absolute()))
@@ -65,41 +65,41 @@ def fine_tune_v3(args):
         print("load weight ",args.model_weight_path)
         model.load_state_dict(torch.load(args.model_weight_path))
     model = model.to(device)
-    # optimizer = transformers.AdamW(model.parameters(),lr=4e-6)
-    # schedules = transformers.get_constant_schedule_with_warmup(optimizer, )
+    
+    
     
 
-    # 加载数据
+    
     args.data_num = len(data)//3
-    random.shuffle(data) # 打乱
+    random.shuffle(data) 
     
     texts = [f"{item.premise} {tokenizer.sep_token} {item.hypothesis}."  for item in data]  
     print("samples:")
     pprint(texts[:5]+texts[-5:])
     labels = [item.label for item in data]
     if not args.fewshot:
-        n_dev = int(len(data)*0.2) # dev数量
-        # 划分dev, train, 创建data_loader
+        n_dev = int(len(data)*0.2) 
+        
         dev_dataset = mnli_data(texts[:n_dev],labels[:n_dev])
         train_dataset = mnli_data(texts[n_dev:],labels[n_dev:])
         dev_loader = util_data.DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
         train_loader = util_data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     else:
-        # for few-shot, use all the data to train
+        
         train_dataset = mnli_data(texts,labels)
         train_loader = util_data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
         dev_loader = None
-    # create optimizer
-    optimizer = AdamW(model.parameters(), lr=args.lr, correct_bias=False) #  一般设定 4e-7 (succeeded experiment)   /2e-6 gt
-    # scheduler = transformers.get_linear_schedule_with_warmup(                                    
-    #     optimizer,
-    #     num_warmup_steps=40,        # 40                                                  
-    #     num_training_steps=args.epoch*len(train_loader)
-    #     )
-    # scheduler = transformers.get_constant_schedule_with_warmup( # 作者的方法                                    
-    #     optimizer,
-    #     num_warmup_steps=40*5,
-    #     )
+    
+    optimizer = AdamW(model.parameters(), lr=args.lr, correct_bias=False) 
+    
+    
+    
+    
+    
+    
+    
+    
+    
     if args.fewshot:
         warm_up_steps = len(train_loader)
     else:
@@ -112,9 +112,9 @@ def fine_tune_v3(args):
         num_warmup_steps=warm_up_steps,
         num_training_steps = args.epoch*(len(train_loader))
         )
-    #N_print = len(train_loader)//16
+    
     N_print = 1
-    # train
+    
     model.train()
     saved_paths = []
     base_acc = -1
@@ -126,7 +126,7 @@ def fine_tune_v3(args):
         for batch_idx, batch in enumerate(train_loader):
             text = batch['texts']
             label = batch['labels']
-            # input_ids = tokenizer.batch_encode_plus(text, padding=True, truncation=True)
+            
             input_ids = tokenizer.batch_encode_plus(text, padding=True, truncation=True)
 
             input_ids = torch.tensor(input_ids["input_ids"]).to(device)
@@ -140,12 +140,12 @@ def fine_tune_v3(args):
             scheduler.step()
 
 
-            # 记录
+            
             acc = multi_acc(prediction.detach().cpu(), label)
             accs.append(acc.item())
             losses.append(loss.detach().cpu().item())
-            #if batch_idx%N_print==0:
-            #    print('\r', " step {}/{} ,  loss_{:.4f} acc_{:.4f}  lr:{}".format(batch_idx+1,total_step,np.mean(losses),np.mean(accs),lr), end='', flush=True)
+            
+            
             print(" step {}/{} ,  loss_{:.4f} acc_{:.4f}  lr:{}".format(batch_idx+1,total_step,np.mean(losses),np.mean(accs),lr))
         train_acc  = np.mean(accs)
         train_loss = np.mean(losses)
@@ -155,29 +155,29 @@ def fine_tune_v3(args):
             base_train_loss = train_loss
 
         if dev_loader is not None:
-        # evaluation
+        
             with torch.no_grad():
                 dev_accs = []
                 for batch_idx, batch in enumerate(dev_loader):
                     text = batch['texts']
                     label = batch['labels']
-                    input_ids = tokenizer.batch_encode_plus(text, padding=True, truncation=True)  # ,max_length=90
+                    input_ids = tokenizer.batch_encode_plus(text, padding=True, truncation=True)  
                     input_ids = torch.tensor(input_ids["input_ids"]).to(device)
                     prediction = model(input_ids,labels=label.to(device))[-1]
                     acc = multi_acc(prediction.detach().cpu(), label)
                     dev_accs.append(acc.detach().cpu().item())
                 dev_acc = np.mean(dev_accs)
 
-            # 保存模型
-            # 自定义保存模型路径
-            # args.check_point_path = os.path.join(PROJECT_PATH,"data/save_model/{}_n{}train_{}".format(args.dataset,args.ratio,args.save_info)+".pt")
+            
+            
+            
             if dev_acc>base_acc:
                 base_acc = dev_acc
                 if base_acc>0.7:
                     print("save model to ",args.check_point_path)
                     print("dev acc is:{}".format(dev_acc))
                     torch.save(model.state_dict(),args.check_point_path)
-                    # 覆盖保存
+                    
                     saved_paths.append(args.check_point_path)
             print()
             print(f'Epoch {epoch+1}: train_loss: {train_loss:.4f} train_acc: {train_acc:.4f}  dev_acc: {dev_acc:.4f}')
@@ -188,18 +188,18 @@ def fine_tune_v3(args):
                 args.check_point_path = os.path.join(PROJECT_PATH,"data/save_model/fewshot_model/{}_n{}train_{}".format(args.dataset,args.ratio,args.save_info)+".pt")
                 print("save model to ",args.check_point_path)
                 torch.save(model.state_dict(),args.check_point_path)
-                if base_acc>0.98: break
+                if base_acc>0.98: break # fewshot
         if args.load_weight and epoch+1==args.epoch:
             print("load weight early break")
             break
-        # if epoch==0:
-        #     print("here break !!!")
-        #     break
+        
+        
+        
                 
-    # 删除不厉害的模型
-    # if len(saved_paths)>=2:
-    #     for paths in saved_paths[:-1]:
-    #         os.remove(paths)
+    
+    
+    
+    
 
 
 
@@ -229,7 +229,7 @@ if __name__=="__main__":
     parser.add_argument('--seed', type=int, required=True, help='as named')
     parser.add_argument('--lr', type=float, default=4e-7, help='learning rate')
     parser.add_argument('--model_path',type=str,required=True)
-    parser.add_argument('--load_weight',type=str2bool,default=False)  # few-shot 模式需要加载之前finetune后的模型
+    parser.add_argument('--load_weight',type=str2bool,default=False)  
     parser.add_argument('--model_weight_path',type=str,default=None,
                         help = "this is for few-shot")
     parser.add_argument('--check_point_path',type=str,default="",

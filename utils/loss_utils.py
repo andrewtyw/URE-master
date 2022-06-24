@@ -11,14 +11,7 @@ device = torch.device('cuda:0')
 
 
 def get_pair(batch_prob, feat, k):
-    """
 
-    :param batch_prob: 每个batch pro 的分布
-    :param feat: [bs,sen_dim] 的张量
-    :param k:
-    :param device:
-    :return:
-    """
     couple = []
     L = len(batch_prob)
     similarity = torch.zeros([L, L])
@@ -26,7 +19,7 @@ def get_pair(batch_prob, feat, k):
         similarity[i, :] = torch.cosine_similarity(batch_prob[i].unsqueeze(0), batch_prob)
         similarity[i][i] = 0
         couple.append(feat[torch.topk(similarity[i], k - 1)[1]])
-    #         print(feat[torch.topk(similarity[i],k-1)[1]].shape)
+    
     res = torch.cat((feat.unsqueeze(1), torch.stack(couple)), dim=1)
     return res, similarity
 
@@ -39,9 +32,9 @@ def get_pair_min(batch_prob, feat, k, device):
         similarity[i, :] = 1 / torch.cosine_similarity(batch_prob[i].unsqueeze(0), batch_prob)
         similarity[i][i] = 1
         couple.append(feat[torch.topk(similarity[i], k - 1)[1]])
-    #         print(feat[torch.topk(similarity[i],k-1)[1]].shape)
-    # res = torch.cat((feat.unsqueeze(1),torch.stack(couple)),dim = 1)
-    # res = torch.cat((feat.unsqueeze(1), torch.stack(couple)), dim=1)
+    
+    
+    
     return couple, similarity
 
 def get_pair_max(batch_prob, feat, k, device):
@@ -52,21 +45,21 @@ def get_pair_max(batch_prob, feat, k, device):
         similarity[i, :] =  torch.cosine_similarity(batch_prob[i].unsqueeze(0), batch_prob)
         similarity[i][i] = 0
         couple.append(feat[torch.topk(similarity[i], k - 1)[1]])
-    #         print(feat[torch.topk(similarity[i],k-1)[1]].shape)
-    # res = torch.cat((feat.unsqueeze(1),torch.stack(couple)),dim = 1)
-    # res = torch.cat((feat.unsqueeze(1), torch.stack(couple)), dim=1)
+    
+    
+    
     return couple, similarity
 
 
-# def get_pair(batch_prob,feat,device):
-#     couple = []
-#     L = len(batch_prob)
-#     similarity = torch.zeros([L,L])
-#     for i in range(L):
-#         similarity[i,:] = torch.cosine_similarity(batch_prob[i].unsqueeze(0),batch_prob)
-#         similarity[i][i] = 0
-#         couple.append(feat[torch.argmax(similarity[i])])
-#     return torch.stack(couple).to(device),similarity
+
+
+
+
+
+
+
+
+
 
 class MaskLoss(nn.Module):
     def __init__(self, topk=10):
@@ -74,12 +67,7 @@ class MaskLoss(nn.Module):
         self.topk = topk
 
     def forward(self, pre_label_masks, pre_label):
-        """
-        计算label之间的误差
-        :param pre_label_masks: object或者subject换了之后的数据的预测
-        :param pre_label: 真正数据的预测
-        :return:
-        """
+
         pre = pre_label.repeat(self.topk, 1).T.ravel()
         return torch.count_nonzero(pre_label_masks - pre) / pre_label.shape[0]
 
@@ -107,12 +95,12 @@ class SupConLoss(nn.Module):
     def forward(self, features, labels=None, mask=None):
         """
         both `labels` and `mask` are None, it degenerates to SimCLR unsupervised loss
-        :param features:  B^alpha 中的2个augment sentence拼接而成,[Batch_size,2*S_L,d_model] 三维
+        :param features:  B^alpha 
         :return:
         """
         batch_size = features.shape[0]
         contrast_count = features.shape[1]
-        contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)  # (Batch_size+2*S_L,)
+        contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)  
 
         if self.contrast_mode == 'one':
             anchor_feature = features[:, 0]
@@ -140,13 +128,13 @@ class SupConLoss(nn.Module):
             torch.matmul(anchor_feature, contrast_feature.T),
             self.temperature)
 
-        # for numerical stability
+        
         logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
         logits = anchor_dot_contrast - logits_max.detach()
 
-        # tile mask
+        
         mask = mask.repeat(anchor_count, contrast_count)
-        # mask-out self-contrast cases
+        
         logits_mask = torch.scatter(
             torch.ones_like(mask),
             1,
@@ -155,30 +143,26 @@ class SupConLoss(nn.Module):
         )
         mask = mask * logits_mask
 
-        # compute log_prob
-        exp_logits = torch.exp(logits) * logits_mask  #[bs, n_contrastive]
+        
+        exp_logits = torch.exp(logits) * logits_mask  
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
 
-        # compute mean of log-likelihood over positive
+        
         mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
 
-        # loss
+        
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
 
         nonreduce_loss = loss.clone().detach().cpu()
-        # loss = - mean_log_prob_pos
+        
         loss = loss.view(anchor_count, batch_size).mean()
 
         return loss,nonreduce_loss
 
 
 def target_distribution(batch: torch.Tensor) -> torch.Tensor:
-    """
-    用于计算pjk
-    :param batch: qjk
-    :return:
-    """
-    weight = (batch ** 2) / (torch.sum(batch, 0) + 1e-9)  # 分子
+
+    weight = (batch ** 2) / (torch.sum(batch, 0) + 1e-9)  
     return (weight.t() / torch.sum(weight, 1)).t()
 
 
@@ -258,9 +242,7 @@ class Augmentation:
                 Dict['object'][obj_type].append(obj)
         return Dict
     def get_aug(self,text,k = 1):
-        """
-            针对这一个text, 拿到k个aug, 以列表返回
-        """
+
         try:
             subj_search_res = self.CPS.search(text)
             obj_search_res = self.CPO.search(text)
@@ -303,7 +285,7 @@ class Augmentation:
         else:
             rn = random.random()
             if rn>0.5:
-                # 换subj的
+                
                 try:
                     random_entity = random.choices(self.Dict['subject'][parse_subjtype],k=k)
                 except:
@@ -311,7 +293,7 @@ class Augmentation:
                     sys.exit()
                 start,end = subj_start, subj_end
             else:
-                # 换obj的
+                
                 try:
                     random_entity = random.choices(self.Dict['object'][parse_objtype],k=k)
                 except:

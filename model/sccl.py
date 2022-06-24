@@ -8,8 +8,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-# from sentence_transformers import SentenceTransformer
-current_dir = os.path.dirname(os.path.abspath(__file__))  # 当前文件夹
+
+current_dir = os.path.dirname(os.path.abspath(__file__))  
 
 def get_subj_obj_start(input_ids_arr,tokenizer,additional_index):
     """
@@ -55,8 +55,8 @@ def get_subj_obj_start(input_ids_arr,tokenizer,additional_index):
                     elif decoded_word.startswith("<O:"):
                         obj_start = idx
         if subj_start==-1 or obj_start==-1:
-            # if we did not find the speicial token, 
-            # we set the start positoin to be 0
+            
+            
             if subj_start==-1:
                 subj_start=0
             if obj_start==-1:
@@ -86,28 +86,28 @@ class SCCL_BERT(nn.Module):
         
         self.tokenizer = bert_model[0].tokenizer
         self.sentbert = bert_model[0].auto_model
-        self.additional_index = len(self.tokenizer) # original vocabulary size
+        self.additional_index = len(self.tokenizer) 
 
-        # add special tokens, such as <S:SUJ_TYPE> </S:SUJ_TYPE> 
+        
         if len(e_tags)!=0:
             print("Add {num} special tokens".format(num=len(e_tags)))
             special_tokens_dict = {'additional_special_tokens': e_tags}
             self.tokenizer.add_special_tokens(special_tokens_dict)
-            self.sentbert.resize_token_embeddings(len(self.tokenizer))  # enlarge vocab
+            self.sentbert.resize_token_embeddings(len(self.tokenizer))  
         
-        self.embed_dim = self.sentbert.config.hidden_size # the embedding dimension of bert, e.g. 768
+        self.embed_dim = self.sentbert.config.hidden_size 
         
         if open_bert==False:
             for param in self.sentbert.parameters():
                 param.requires_grad = False
             self.sentbert.eval()
 
-        # the final full-connected layer, helping to classify
+        
         self.out = nn.Linear(2*self.embed_dim,n_rel) 
 
     @staticmethod
     def cls_pooling(model_output):
-        return model_output[0][:,0] # CLS token
+        return model_output[0][:,0] 
     def get_embeddings(self, text_arr):
         """
         Args: 
@@ -115,9 +115,9 @@ class SCCL_BERT(nn.Module):
         return:
             the feature(CLS token) of the texts with shape (bs,d_model)
         """
-        #这里的x都是文本
+        
         feat_text= self.tokenizer.batch_encode_plus(text_arr, 
-                                                    max_length=self.max_length+2,  # +2是因为CLS 和SEQ也算进去max_length的
+                                                    max_length=self.max_length+2,  
                                                     return_tensors='pt', 
                                                     padding='longest',
                                                     truncation=True)
@@ -126,7 +126,7 @@ class SCCL_BERT(nn.Module):
         self.sentbert.train()
         bert_output = self.sentbert.forward(**feat_text)
 
-        #计算embedding (CLS)
+        
         embedding = SCCL_BERT.cls_pooling(bert_output)
 
         return embedding
@@ -153,7 +153,7 @@ class SCCL_BERT(nn.Module):
             feat_text[k] = feat_text[k].to(self.device)
         self.sentbert.train()
 
-        # the index of the two entity mark
+        
         ent1_spos,ent2_spos = get_subj_obj_start(feat_text['input_ids'],self.tokenizer,self.additional_index)
 
         bert_output = self.sentbert.forward(**feat_text)
@@ -162,10 +162,10 @@ class SCCL_BERT(nn.Module):
         assert len(ent1_spos)==len(ent2_spos)
         ent1_spos = torch.tensor(ent1_spos)
         ent2_spos = torch.tensor(ent2_spos)
-        embedding1 = bert_output[[i for i in range(bs)],ent1_spos,:] # the feat represented by subj index
-        embedding2 = bert_output[[i for i in range(bs)],ent2_spos,:] # the feat represented by sbj  index
+        embedding1 = bert_output[[i for i in range(bs)],ent1_spos,:] 
+        embedding2 = bert_output[[i for i in range(bs)],ent2_spos,:] 
         embeddings = torch.cat([embedding1,embedding2],dim = 1)
-        return embeddings  # [bs, d_model * 2]
+        return embeddings  
 
 
 

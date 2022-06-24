@@ -10,12 +10,12 @@ CURR_DIR = str(PATH.parent.absolute())
 sys.path.append(CURR_DIR)
 P = PATH.parent
 print("current dir: ",CURR_DIR)
-for i in range(1):  # add parent path, height = 3
+for i in range(1):  
     P = P.parent
     PROJECT_PATH = str(P.absolute())
     sys.path.append(str(P.absolute()))
 import time
-TIME=time.strftime("%m%d%H%M%S", time.localtime())# record the initial time
+TIME=time.strftime("%m%d%H%M%S", time.localtime())
 print("time",TIME)
 from utils.dict_relate import dict_index,dict2list
 from utils.pickle_picky import load, save
@@ -42,7 +42,7 @@ class Train_dataset(Dataset):
     def __getitem__(self, index):
         return {
             'text': self.data['text'][index],
-            'p_label': self.data['p_label'][index],  # pseudo_label
+            'p_label': self.data['p_label'][index],  
             'index': self.data['index'][index],
         }
 
@@ -61,8 +61,8 @@ def NLNL_main(args):
         args.dataset=mode = "wiki"
     train_data = load(args.train_path)
     train_data['p_label'] = train_data['top1']
-    ##
-    # print basic information of the train_data
+    
+    
     print("*"*10,"information","*"*10)
     info_acc = sum(np.array(train_data['p_label'])==np.array(train_data['label']))/len(train_data['p_label'])
     n_pseudo_label_relation = len(set(train_data['p_label']))
@@ -70,14 +70,14 @@ def NLNL_main(args):
     print("n_relation:{}".format(n_pseudo_label_relation))
     print("N_data:{}".format(len(train_data['p_label'])))
     print("*"*10,"***********","*"*10)
-    ##
+    
 
     num_classes = args.n_rel
     args.N_train = N_train = len(train_data['text'])
     train_data['index'] = [i for i in range(args.N_train)]
     train_data_list = dict2list(train_data)
     train_dataset = Train_dataset(train_data)
-    # test_dataset = Test_dataset(test_data)
+    
     train_loader = util_data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
     inds_noisy = np.asarray([index for index in range(len(train_data['p_label'])) if train_data['p_label'][index]!=train_data['label'][index]  ])
     inds_clean = np.delete(np.arange(N_train), inds_noisy)
@@ -88,14 +88,14 @@ def NLNL_main(args):
     sccl_model:SCCL_BERT = SCCL_BERT(bert_model, args.max_len,
                            device, args.n_rel, True, tags).to(device)
 
-    ##
-    # set training related
+    
+    
     optimizer = torch.optim.AdamW([
         {'params': sccl_model.sentbert.parameters()},
         {'params': sccl_model.out.parameters(), 'lr': args.lr*args.lr_scale}], lr=args.lr)
-    ##
+    
 
-    # 产生weight
+    
     weight = torch.FloatTensor(num_classes).zero_() + 1.
     for i in range(num_classes):
         weight[i] = (torch.from_numpy(np.array(train_data['p_label']).astype(int)) == i).sum()  
@@ -103,19 +103,19 @@ def NLNL_main(args):
 
 
 
-    ##
-    # criterions
-    # criterion = nn.CrossEntropyLoss(weight=weight)
+    
+    
+    
     criterion = nn.CrossEntropyLoss()
     criterion_nll = nn.NLLLoss()
-    criterion_nr = nn.CrossEntropyLoss(reduction='none')  # compute per-sample losses
+    criterion_nr = nn.CrossEntropyLoss(reduction='none')  
     criterion.to(device)
     criterion_nll.to(device)
     criterion_nr.to(device)
-    ##
+    
     n_print_steps = 10
-    ##
-    # NLNL parameters
+    
+    
     train_preds = torch.zeros(N_train, num_classes) - 1.
     num_hist = 10
     train_preds_hist = torch.zeros(N_train, num_hist, num_classes)  
@@ -124,9 +124,9 @@ def NLNL_main(args):
     pl_ratio = 0.
     nl_ratio = 1.-pl_ratio 
     train_losses = torch.zeros(N_train) - 1. 
-    ##
-    ##
-    # train
+    
+    
+    
     best_test_acc = 0.0
     for epoch in range(args.epoch):
         train_loss = train_loss_neg = train_acc = 0.0
@@ -153,14 +153,14 @@ def NLNL_main(args):
             s_neg *= weight[labels].unsqueeze(-1).expand(s_neg.size()).to(device)
             _, pred = torch.max(logits.data, -1)  
 
-            ##
-            # find labels for fewshot
+            
+            
             confidences = F.softmax(logits,-1)
             confidence = confidences[np.array([i for i in range(len(logits))]),pred]
             data_predict[index] = pred.detach().cpu() 
             data_predict_confidence[index] = confidence.detach().cpu() 
             stop = 1
-            ##
+            
 
             acc = float((pred == labels.data).sum())   
             train_acc += acc
@@ -172,7 +172,7 @@ def NLNL_main(args):
             train_losses[index] = criterion_nr(logits, labels).cpu().data
             
 
-            labels = labels*0 - 100  # In the program, we do not use the process of SelNL and SelPL, cause they will make lower accuracy in "clean data"
+            labels = labels*0 - 100  
             
             loss_neg = criterion_nll(s_neg.repeat(args.ln_neg, 1), labels_neg.t().contiguous().view(-1)) * float((labels_neg >= 0).sum())
             loss_pl = criterion(logits, labels)* float((labels >= 0).sum())
@@ -191,20 +191,20 @@ def NLNL_main(args):
             if i%n_print_steps==0:
                 print(" step {}/{} ,  loss_{:.4f} acc_{:.4f}  ".format(i+1,len(train_loader),np.mean(losses),np.mean(accs)))
             nl += float((labels_neg[:, 0] >= 0).sum())
-            # if i==10:break
+            
 
 
-        ## it is used to select data for fewshot.
-        # select topk confident data of each category in predition 
+        
+        
         predicts = dict()
         for i,(pre,confi) in enumerate(zip(data_predict,data_predict_confidence)):
             pre = pre.item()
             confi = confi.item()
             if pre not in predicts:
-                predicts[pre] = [(i,confi)] # (data_index, confidence)
+                predicts[pre] = [(i,confi)] 
             else:
                 predicts[pre].append((i,confi))
-        for k in predicts.keys():  # sort it 
+        for k in predicts.keys():  
             predicts[k].sort(key=lambda x : x[1],reverse=True)
 
 
@@ -215,11 +215,11 @@ def NLNL_main(args):
                 items  = [item[0] for item in predicts[k][:topk]]
                 selected_index.extend(items) 
             selected_label = [train_data['label'][i] for i in selected_index]
-            # print(Counter(selected_label))
+            
             selected_data = dict_index(train_data,selected_index)
             selected_data['top1'] = selected_data['p_label'] = selected_data['label'] 
-            # print(Counter(selected_data['top1']))
-        ##
+            
+        
 
 
 
@@ -237,19 +237,19 @@ def NLNL_main(args):
 
 
 
-        ###############################################################################################
+        
         assert train_preds[train_preds < 0].nelement() == 0
         train_preds_hist[:, epoch % num_hist] = train_preds
         train_preds_hist_all[epoch] = train_preds
         train_preds = train_preds*0 - 1.
         assert train_losses[train_losses < 0].nelement() == 0
         train_losses = train_losses*0 - 1.
-        ###############################################################################################
+        
 
 
         
-        ##  
-        p_label_confidence = train_preds_hist.mean(1)[torch.arange(N_train), np.array(train_data['p_label']).astype(int)] # shape = N_train
+        
+        p_label_confidence = train_preds_hist.mean(1)[torch.arange(N_train), np.array(train_data['p_label']).astype(int)] 
         train_preds_hist_all_list.append(p_label_confidence.numpy())
         metric = {
             "his_all":train_preds_hist_all,
