@@ -7,7 +7,7 @@ PATH = Path(CURR_FILE_PATH)
 CURR_DIR = str(PATH.parent.absolute())
 sys.path.append(CURR_DIR)
 P = PATH.parent
-for i in range(3): # add parent path, height = 3
+for i in range(3): 
     P = P.parent
     sys.path.append(str(P.absolute()))
 import time
@@ -62,14 +62,14 @@ class _NLIRelationClassifier(Classifier):
             verbose=verbose,
             half=half,
         )
-        # self.ent_pos = entailment_position
-        # self.cont_pos = -1 if self.ent_pos == 0 else 0
+        
+        
         self.negative_threshold = negative_threshold
         self.negative_idx = negative_idx
         self.max_activations = max_activations
-        self.n_rel = len(labels)  # n_rel==n_template>42
-        # for label in labels:
-        #     assert '{subj}' in label and '{obj}' in label
+        self.n_rel = len(labels)  
+        
+        
 
         if valid_conditions:
             self.valid_conditions = {}
@@ -87,7 +87,7 @@ class _NLIRelationClassifier(Classifier):
         else:
             self.valid_conditions = None
 
-        def idx2label(idx):  # all template idx TO label
+        def idx2label(idx):  
             return self.labels[idx]
 
         self.idx2label = np.vectorize(idx2label)
@@ -111,7 +111,7 @@ class _NLIRelationClassifier(Classifier):
             self.ent_pos = int(self.ent_pos)
 
     def _run_batch(self, batch, multiclass=False):
-        # here
+        
         with torch.no_grad():
             input_ids = self.tokenizer.batch_encode_plus(batch, padding=True, truncation=True)
             input_ids = torch.tensor(input_ids["input_ids"]).to(self.device)
@@ -119,7 +119,7 @@ class _NLIRelationClassifier(Classifier):
             if multiclass:
                 output = np.exp(output) / np.exp(output).sum(
                     -1, keepdims=True
-                )  # np.exp(output[..., [self.cont_pos, self.ent_pos]]).sum(-1, keepdims=True)
+                )  
             output = output[..., self.ent_pos].reshape(input_ids.shape[0] // len(self.labels), -1)
 
         return output
@@ -135,14 +135,14 @@ class _NLIRelationClassifier(Classifier):
         
         batch, outputs = [], []
         for i, feature in tqdm(enumerate(features), total=len(features)):
-            sentences = [  # 对某个sentence, 遍历所有的template (n_template=73)
+            sentences = [  
                 f"{feature.context} {self.tokenizer.sep_token} {label_template.format(subj=feature.subj, obj=feature.obj)}."
                 for label_template in self.labels
             ]
             batch.extend(sentences)
 
             if (i + 1) % batch_size == 0:
-                output = self._run_batch(batch, multiclass=multiclass) # shape=[bs, prob(跑出来的p_entailment)] # [array([0.000954, 0.0...e=float16)]
+                output = self._run_batch(batch, multiclass=multiclass) 
                 outputs.append(output)
                 batch = []
             if i==0:
@@ -152,7 +152,7 @@ class _NLIRelationClassifier(Classifier):
             output = self._run_batch(batch, multiclass=multiclass)
             outputs.append(output)
 
-        outputs = np.vstack(outputs)  # [n_data, prob(跑出来的p_entailment)]
+        outputs = np.vstack(outputs)  
 
         return outputs
 
@@ -160,24 +160,24 @@ class _NLIRelationClassifier(Classifier):
         activations = (probs >= self.negative_threshold).sum(-1).astype(np.int)
         idx = np.logical_or(
             activations == 0, activations >= self.max_activations
-        )  # If there are no activations then is a negative example, if there are too many, then is a noisy example
+        )  
         probs[idx, self.negative_idx] = 1.00
         return probs
 
     def _apply_valid_conditions(self, probs, features: List[REInputFeatures]):
-        """新的"""
+        
         if arguments.dataset in ["wiki","wikifact"]:
-            # 用于解决 某个数据的pair-type 不属于任何一个relation的pair-type的情况
+            
             mask_matrix = []
             for id,feature in enumerate(features):
                 pair_type = feature.pair_type
-                if ':' in pair_type: # type-pair能完全匹配
+                if ':' in pair_type: 
                     mask_matrix.append(self.valid_conditions.get(feature.pair_type, np.ones(self.n_rel)))
-                elif '?' in pair_type: # type-pair不能完全匹配
+                elif '?' in pair_type: 
                     try:
                         sub_type,obj_type = pair_type.split('?')
                     except:
-                        # no type here
+                        
                         print("Failed split: ",pair_type)
                         mask_matrix.append(np.ones(self.n_rel))
                         continue
@@ -191,10 +191,10 @@ class _NLIRelationClassifier(Classifier):
                             masks = masks+mask
                             temp.append(vali_type)
                     masks = np.clip(masks,0,1)
-                    if sum(masks)==0: # 没有一个匹配的时候, 就全匹配
+                    if sum(masks)==0: 
                         masks = np.ones(self.n_rel)
                     mask_matrix.append(masks)
-                # assert id != 2140
+                
             mask_matrix = np.stack(
                 mask_matrix,
                 axis=0,
@@ -202,13 +202,13 @@ class _NLIRelationClassifier(Classifier):
         """
         tac使用旧的
         """
-        # mask_matrix = np.stack(
-        #     [self.valid_conditions.get(feature.pair_type, np.ones(self.n_rel)) for feature in features],  # 注意, 这里用ones
-        #     axis=0,
-        # )
+        
+        
+        
+        
         if arguments.dataset=="tac":
             mask_matrix = np.stack(
-                [self.valid_conditions.get(feature.pair_type, np.zeros(self.n_rel)) for feature in features],  # 注意, wiki这里用ones
+                [self.valid_conditions.get(feature.pair_type, np.zeros(self.n_rel)) for feature in features],  
                 axis=0,
             )
         probs = probs * mask_matrix
@@ -273,7 +273,7 @@ class _GenerativeNLIRelationClassifier(_NLIRelationClassifier):
             if multiclass:
                 output = np.exp(output) / np.exp(output).sum(
                     -1, keepdims=True
-                )  # np.exp(output[..., [self.cont_pos, self.ent_pos]]).sum(-1, keepdims=True)
+                )  
             output = output[..., 0].reshape(input_ids.shape[0] // len(self.labels), -1)
 
         return output
@@ -331,24 +331,24 @@ class NLIRelationClassifierWithMappingHead(_NLIRelationClassifier):
     def __init__(
         self,
         labels: List[str],
-        template_mapping: Dict[str, str],  # key: rel ,  value: template
+        template_mapping: Dict[str, str],  
         pretrained_model: str = arguments.model_path,
         valid_conditions: Dict[str, list] = None,
         *args,
         **kwargs,
     ):
 
-        self.template_mapping_reverse = defaultdict(list) # key: template,  value: rel
+        self.template_mapping_reverse = defaultdict(list) 
         for key, value in template_mapping.items():
             for v in value:
-                # template_mapping_reverse key: template,  value: relation, 可能有多个rel 
+                
                 self.template_mapping_reverse[v].append(key)   
-        self.new_topics = list(self.template_mapping_reverse.keys())  # 所有的template
+        self.new_topics = list(self.template_mapping_reverse.keys())  
 
-        self.target_labels = labels  # 所有的label
-        self.new_labels2id = {t: i for i, t in enumerate(self.new_topics)}  # template 2 id
+        self.target_labels = labels  
+        self.new_labels2id = {t: i for i, t in enumerate(self.new_topics)}  
         self.new_id2labels = dict(zip(self.new_labels2id.values(),self.new_labels2id.keys()))
-        self.mapping = defaultdict(list)  # key:rel  value: template_id
+        self.mapping = defaultdict(list)  
         for key, value in template_mapping.items():
             self.mapping[key].extend([self.new_labels2id[v] for v in value])
 
@@ -359,8 +359,8 @@ class NLIRelationClassifierWithMappingHead(_NLIRelationClassifier):
             valid_conditions=None,
             **kwargs,
         )
-        # 下面, 最终得到valid_conditions: key:rel,  value [subj_type:obj_type]
-        if valid_conditions:  # 各个rel的constrain
+        
+        if valid_conditions:  
             self.valid_conditions = {}
             rel2id = {r: i for i, r in enumerate(labels)}
             self.n_rel = len(rel2id)
@@ -385,22 +385,22 @@ class NLIRelationClassifierWithMappingHead(_NLIRelationClassifier):
     def __call__(self, features: List[REInputFeatures], batch_size=1, multiclass=True):
         if arguments.outputs==None:
             print("outputs is None, compute out")
-            outputs = super().__call__(features, batch_size, multiclass)  # [n_data, entailment_prob(73个)]
+            outputs = super().__call__(features, batch_size, multiclass)  
             save_path = os.path.join(arguments.out_save_path,"{}_num{}_{}.pkl".format(
                 arguments.dataset,len(outputs),TIME
                 ))
             if arguments.mode!="0.01dev":
                 print("save to ",save_path)
-                save(outputs,save_path) # 保存entailment的output
+                save(outputs,save_path) 
         else: 
             print("load outputs")
-            outputs = load(arguments.outputs)  # 用已经搞好了的mnli output
+            outputs = load(arguments.outputs)  
         template_socre = copy.deepcopy(outputs)
-        # outputs=> [n_sample, n_template]
-        # 获取各个template的score,  从大到小排序
-        outputs_sorted_index  = np.argsort(outputs,axis=1)[:,::-1]  # [n_sample, n_template(sorted_index)]
-        template_sorted = list() # the same shape as outputs_sorted_index
-        # 得到template
+        
+        
+        outputs_sorted_index  = np.argsort(outputs,axis=1)[:,::-1]  
+        template_sorted = list() 
+        
         for templates_out in outputs_sorted_index:
             template_sorted.append([self.new_id2labels[template_id] for template_id in templates_out])
 
@@ -419,7 +419,7 @@ class NLIRelationClassifierWithMappingHead(_NLIRelationClassifier):
         entailment_score = outputs.copy()
 
         if self.valid_conditions:
-            outputs = self._apply_valid_conditions(outputs, features)  # apply type constrain
+            outputs = self._apply_valid_conditions(outputs, features)  
 
         outputs = self._apply_negative_threshold(outputs)
 
@@ -703,7 +703,7 @@ if __name__ == "__main__":
             context="Pandit worked at the brokerage Morgan Stanley for about 11 years until 2005, when he and some Morgan Stanley colleagues quit and later founded the hedge fund Old Lane Partners.",
             label="org:founded_by",
         ),
-        # REInputFeatures(subj='He', obj='University of Maryland in College Park', context='He received an undergraduate degree from Morgan State University in 1950 and applied for admission to graduate school at the University of Maryland in College Park.', label='no_relation')
+        
     ]
 
     predictions = clf(features, multiclass=True)

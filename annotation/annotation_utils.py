@@ -8,10 +8,9 @@ import torch
 
 
 def dict_index(data:dict,index_arr):
-    """
-    遍历dict中的元素, 取出在index_arr中的下标
-    """
-    # 以数据的第一个key的value的len作为标准, 其余小于该len的key舍弃
+
+    
+
     length = len(data[list(data.keys())[0]])
 
     data_copy = copy.copy(data)
@@ -27,7 +26,8 @@ def dict_index(data:dict,index_arr):
             print()
             continue
 
-        # data_copy[k] = [data_copy[k][idx] for idx in index_arr]
+        
+
 
         if isinstance(data_copy[k],np.ndarray):
             data_copy[k] = np.array([data_copy[k][idx] for idx in index_arr])
@@ -40,10 +40,7 @@ def dict_index(data:dict,index_arr):
     return data_copy
 
 def top_k_accuracy(output, labels, k=5, id2labels=None):
-    """
-    top_k_accuracy for whole output
-    若id2labels非空, 则可返回topk的predict出来的relation
-    """
+
     preds = np.argsort(output)[:, ::-1][:, :k]
     total = len(preds)
     right = 0
@@ -106,13 +103,15 @@ def apply_threshold(output, threshold=0.0, ignore_negative_prediction=True):
     output_ = output.copy()
     if ignore_negative_prediction:
         output_[:, 0] = 0.0
-    activations = (output_ >= threshold).sum(-1).astype(np.int)  # 如果没有一个pos rel的 prob>threshold  , 那么归为no-rel
+    activations = (output_ >= threshold).sum(-1).astype(np.int)  
+
     output_[activations == 0, 0] = 1.00
 
     
     applied_threshold_output = copy.deepcopy(output_)
     score = np.max(output_,-1)
-    return output_.argmax(-1),applied_threshold_output,score  # matrix
+    return output_.argmax(-1),applied_threshold_output,score  
+
 
 
 def find_optimal_threshold(labels, output, granularity=1000, metric=f1_score_):

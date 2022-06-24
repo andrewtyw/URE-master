@@ -10,14 +10,14 @@ CURR_TIME=time.strftime("%m%d%H%M%S", time.localtime())
 print("current time:",CURR_TIME)
 sys.path.append(CURR_DIR)
 P = PATH.parent
-for i in range(3): # add parent path, height = 3
+for i in range(3): 
     P = P.parent
     sys.path.append(str(P.absolute()))
 
 import arguments
 from mnli import NLIRelationClassifierWithMappingHead, REInputFeatures
 from tacred import *
-# from utils.dict_relate import dict_index
+
 from annotation_utils import find_optimal_threshold, apply_threshold,load,save,set_global_random_seed
 from annotation_utils import find_uppercase
 import json
@@ -34,7 +34,7 @@ def get_optimal_threshold():
     print("*"*20)
     print(" "*2,"find 0.01 threshold")
     print("*"*20)
-    set_global_random_seed(arguments.seed)  # 设置随机种子
+    set_global_random_seed(arguments.seed)  
     run_evaluation_path_temp = arguments.run_evaluation_path
     arguments.run_evaluation_path = arguments.run_evaluation_path.replace("{}.json".format(arguments.mode),"0.01dev.json")
     mode_temp = arguments.mode
@@ -45,25 +45,25 @@ def get_optimal_threshold():
     with open(arguments.config_path, "rt") as f:
         config = json.load(f)
 
-    # 下面的事情只有tac会干
+    
     if arguments.dataset=="tac":
         labels2id = (
             {label: i for i, label in enumerate(TACRED_LABELS)}
         )
-        # id2labels
+        
         id2labels = dict(zip(
             list(labels2id.values()),
             list(labels2id.keys())
         ))
 
-        with open(arguments.run_evaluation_path, "rt") as f:  #输出features, labels, relations,subj_pos,obj_pos
+        with open(arguments.run_evaluation_path, "rt") as f:  
             print("eval path:",arguments.run_evaluation_path)
             features, labels, relations,subj_pos,obj_pos = [], [],[],[],[]
             for line in json.load(f):
                 id = line['id']
-                # if arguments.split and arguments.selected_ratio is None:
-                #     if id not in split_ids:
-                #         continue
+                
+                
+                
                 line["relation"] = (
                     line["relation"] if not basic else TACRED_BASIC_LABELS_MAPPING.get(line["relation"], line["relation"])
                 )
@@ -95,10 +95,10 @@ def get_optimal_threshold():
                 relations.append(line["relation"])
                 labels.append(labels2id[line["relation"]])
 
-        # dict_keys(['text', 'rel', 'subj', 'obj', 'subj_type', 'obj_type', 'top1', 'top2', 'label', 'pos_or_not'])
+        
 
-    # print(unqualified)
-    labels = np.array(labels)  # feature的label
+    
+    labels = np.array(labels)  
     print("distribution of relations",Counter(relations))
 
 
@@ -116,7 +116,7 @@ def get_optimal_threshold():
         top1,applied_threshold_output,_ = apply_threshold(output, threshold=optimal_threshold,ignore_negative_prediction=ignore_neg_pred)
 
 
-        pre, rec, f1, _ = precision_recall_fscore_support(  # 应该是只算pos的,  因为当预测全为neg_rel的时候, f1 = 0
+        pre, rec, f1, _ = precision_recall_fscore_support(  
             labels, top1, average="micro", labels=list(range(1, n_labels)) if arguments.dataset=="tac" else None
         )
         print("pre:",pre)

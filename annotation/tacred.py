@@ -130,25 +130,25 @@ TACRED_BASIC_LABELS = [
 ]
 
 TACRED_BASIC_LABELS_MAPPING = {
-    # Place of birth
+    
     "per:city_of_birth": "per:place_of_birth",
     "per:country_of_birth": "per:place_of_birth",
     "per:stateorprovince_of_birth": "per:place_of_birth",
-    # Origin can be see as a country/place of birth
+    
     "per:origin": "per:place_of_birth",
-    # Place of death
+    
     "per:city_of_death": "per:place_of_death",
     "per:country_of_death": "per:place_of_death",
     "per:stateorprovince_of_death": "per:place_of_death",
-    # Place of residence
+    
     "per:cities_of_residence": "per:place_of_residence",
     "per:countries_of_residence": "per:place_of_residence",
     "per:stateorprovinces_of_residence": "per:place_of_residence",
-    # Place of headquarters
+    
     "org:city_of_headquarters": "org:place_of_headquarters",
     "org:country_of_headquarters": "org:place_of_headquarters",
     "org:stateorprovince_of_headquarters": "org:place_of_headquarters",
-    # Alternative names
+    
     "per:alternate_names": "both:alternate_names",
     "org:alternate_names": "both:alternate_names",
 }

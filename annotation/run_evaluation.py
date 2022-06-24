@@ -7,7 +7,7 @@ PATH = Path(CURR_FILE_PATH)
 CURR_DIR = str(PATH.parent.absolute())
 sys.path.append(CURR_DIR)
 P = PATH.parent
-for i in range(3): # add parent path, height = 3
+for i in range(3): 
     P = P.parent
     sys.path.append(str(P.absolute()))
 import time
@@ -30,7 +30,7 @@ from find_threshold import get_optimal_threshold
 from annotation_utils import find_optimal_threshold, apply_threshold,load,save,set_global_random_seed
 from annotation_utils import find_uppercase,top_k_accuracy,dict_index
 from utils.clean import get_format_train_text
-set_global_random_seed(arguments.seed)  # 设置随机种子
+set_global_random_seed(arguments.seed)  
 
 
 if arguments.dataset=="wiki":
@@ -38,15 +38,15 @@ if arguments.dataset=="wiki":
 
 
 
-# 加载config文件
+
 with open(arguments.config_path, "rt") as f:
     config = json.load(f)
 
 
 
-# 读取tac/wiki的数据
+
 """
-    读取完数据会得到:
+    to obtain:
     features: List[REInputFeatures],
     labels: List[int],
     relations: List[str],
@@ -57,13 +57,13 @@ if arguments.dataset=="tac":
     labels2id = (
         {label: i for i, label in enumerate(TACRED_LABELS)}
     )
-    # id2labels
+    
     id2labels = dict(zip(
         list(labels2id.values()),
         list(labels2id.keys())
     ))
 
-    # 读取json文件
+    
     with open(arguments.run_evaluation_path, "rt") as f:  
         features, labels, relations,subj_pos,obj_pos = [], [],[],[],[]
         for line in json.load(f):
@@ -124,28 +124,28 @@ elif arguments.dataset=="wiki":
         cased_subj = ' '.join(context.split()[subj_p[0]:subj_p[1]])
         cased_obj = ' '.join(context.split()[obj_p[0]:obj_p[1]])
         try:
-            # 先尝试直接根据subj_position和obj_position来找大写的subj和obj
+            
             assert subj.replace(" ","")==cased_subj.lower().replace(" ","")
             assert obj.replace(" ","")==cased_obj.lower().replace(" ","")
         except:
-            # 找不到就用find_uppercase遍历找
+            
             unqualified+=1 
-            cased_subj = find_uppercase(context.split(),subj.split()) #依据小写的subj找出原句中大写的subj (cased_subj)
+            cased_subj = find_uppercase(context.split(),subj.split()) 
             cased_obj = find_uppercase(context.split(),obj.split())
-            #print(subj,"=>", cased_subj)
-            # cased_subj = subj
-            # cased_obj = obj
+            
+            
+            
         feat_condition = str(subj_type)+':'+str(obj_type) 
-        if feat_condition in conditions:  # 能完全匹配
+        if feat_condition in conditions:  
             features.append(REInputFeatures(
                 subj=cased_subj,
                 obj=cased_obj,
                 pair_type=f"{subj_type}:{obj_type}",
                 context=context,
                 label=label,
-            ))#如果 relation_type在conditions中正常利用rules进行筛除.
+            ))
         else:
-            # 不能完全匹配
+            
             features.append(REInputFeatures(
                 subj=cased_subj,
                 obj=cased_obj,
@@ -156,8 +156,8 @@ elif arguments.dataset=="wiki":
         labels.append(labels2id[label])
         index+=1
 
-# print(unqualified)
-labels = np.array(labels)  # feature的label
+
+labels = np.array(labels)  
 
 
 
@@ -183,7 +183,7 @@ for configuration in config:
     elif arguments.dataset=="tac":
         optimal_threshold = get_optimal_threshold()
     else:
-        # wiki没threshold
+        
         optimal_threshold = 0
 
     ignore_neg_pred = False if arguments.dataset in ['wiki','wikifact'] else True
@@ -191,7 +191,7 @@ for configuration in config:
     top1,applied_threshold_output,score = apply_threshold(output, threshold=optimal_threshold,ignore_negative_prediction=ignore_neg_pred)
 
 
-    # 获取每个rel对应的score的数据
+    
     label_scores = []
     for entail_score in entailment_score:
         label_score = {}
@@ -205,21 +205,21 @@ for configuration in config:
 
     
 
-    pre, rec, f1, _ = precision_recall_fscore_support(  # 应该是只算pos的,  因为当预测全为neg_rel的时候, f1 = 0
+    pre, rec, f1, _ = precision_recall_fscore_support(  
         labels, top1, average="micro", labels=list(range(1, n_labels)) if arguments.dataset=="tac" else None
     )
-    macro_pre, macro_rec, macro_f1, _ = precision_recall_fscore_support(  # 应该是只算pos的,  因为当预测全为neg_rel的时候, f1 = 0
+    macro_pre, macro_rec, macro_f1, _ = precision_recall_fscore_support(  
         labels, top1, average="macro", labels=list(range(1, n_labels)) if arguments.dataset=="tac" else None
     )
-    # 一下是不带label的
-    macro_pre_nolabel, macro_rec_nolabel, macro_f1_nolabel, _ = precision_recall_fscore_support(  # 应该是只算pos的,  因为当预测全为neg_rel的时候, f1 = 0
+    
+    macro_pre_nolabel, macro_rec_nolabel, macro_f1_nolabel, _ = precision_recall_fscore_support(  
         labels, top1, average="macro", labels= None
     )
-    micro_pre_nolabel, micro_rec_nolabel, micro_f1_nolabel, _ = precision_recall_fscore_support(  # 应该是只算pos的,  因为当预测全为neg_rel的时候, f1 = 0
+    micro_pre_nolabel, micro_rec_nolabel, micro_f1_nolabel, _ = precision_recall_fscore_support(  
         labels, top1, average="micro", labels= None
     )
     top1_acc = sum(top1==labels)/len(labels)
-    top1_p_rel = [id2labels[item] for item in top1]  # get top1 relation
+    top1_p_rel = [id2labels[item] for item in top1]  
 
 
     configuration["precision"] = pre
@@ -237,13 +237,13 @@ for configuration in config:
     print("labeled f1(macro):{:.6f}".format(macro_f1))
     print("precision(macro):{:.6f}".format(macro_pre))
     print("recall(macro):{:.6f}".format(macro_rec))
-    # 上面是有lable的结果
-    # 下面是没有label的结果
-    print("*"*20) # micro no label 
+    
+    
+    print("*"*20) 
     print("no label f1(micro):{:.6f}".format(micro_f1_nolabel))
     print("no label precision(micro):{:.6f}".format(micro_pre_nolabel))
     print("no label recall(micro):{:.6f}".format(micro_rec_nolabel))
-    print("*"*20) # macro no label
+    print("*"*20) 
     print("no labeled f1(macro):{:.6f}".format(macro_f1_nolabel))
     print("no label precision(macro):{:.6f}".format(macro_pre_nolabel))
     print("no label recall(macro):{:.6f}".format(macro_rec_nolabel))
@@ -253,11 +253,11 @@ for configuration in config:
         print("top{} acc={:.6f}".format(i, configuration["top-{}".format(i)]))
     
     
-    # 保存标注的数据
+    
     if arguments.generate_data:
         label2id = load(arguments.label2id_path)
         id2label = dict(zip(label2id.values(),label2id.keys()))
-        # save(id2label,"/home/tywang/myURE/URE_mnli/temp_files/analysis_0.01510/id2label.pkl")
+        
         dataset = {
         'text':[],
         'rel':[],
@@ -275,7 +275,7 @@ for configuration in config:
             dataset['rel'].append(rel)
             dataset['subj'].append(feat.subj)
             dataset['obj'].append(feat.obj)
-            # 得到subj/obj type
+            
             if ":" in feat.pair_type:
                 subj_type,obj_type = feat.pair_type.split(":")
             elif "-" in feat.pair_type: 
@@ -287,7 +287,7 @@ for configuration in config:
                 assert ' '.join(text.split()[subj_p[0]:subj_p[1]+1])==subj
                 assert ' '.join(text.split()[obj_p[0]:obj_p[1]+1])==obj
 
-        # 给text的subj和obj标上 <S:XXXX> </S:XXXX> , <O:XXXX> </O:XXXX> 
+        
         dataset, etags = get_format_train_text(dataset,mode=arguments.dataset,return_tag=True)
 
         dataset['template'] = template_sorted
@@ -308,8 +308,8 @@ for configuration in config:
         print("start to generate inferred data...")
         if arguments.dataset=="tac" and arguments.mode=="train":
             neg_id = label2id['no_relation']
-            pos_index = [i for i in range(len(dataset['top1'])) if dataset['top1'][i]!=neg_id]  # 选出positive数据的下标
-            # 选出pseudo=positive的数据
+            pos_index = [i for i in range(len(dataset['top1'])) if dataset['top1'][i]!=neg_id]  
+            
             dataset_pos = dict_index(dataset,pos_index)
             top1_acc = sum(np.array(dataset_pos['top1'])==np.array(dataset_pos['label']))/len(dataset_pos['top1'])
             print("tac selected acc:{:.6f}".format(top1_acc))
@@ -321,15 +321,15 @@ for configuration in config:
             else:  
                 save_path = os.path.join(arguments.generate_data_save_path,"{}_{}_pos_T{}_acc{:.4f}.pkl".format(arguments.dataset,arguments.mode,TIME,top1_acc))
                 save(dataset_pos,save_path)
-            # # 全集
-            # whole_acc = accuracy_score(dataset['label'],dataset['top1'])
-            # save_path = os.path.join(arguments.generate_data_save_path,"{}_{}_whole_T{}_acc{:.4f}.pkl".format(arguments.dataset,arguments.mode,TIME,whole_acc))
-            # save(dataset,save_path)
+            
+            
+            
+            
 
         else:
             if arguments.given_save_path is not None:
                 save(dataset,arguments.given_save_path )
-            # wiki数据集则直接保存
+            
             else:
                 save_path = os.path.join(arguments.generate_data_save_path,"{}_{}_T{}_acc{:.4f}.pkl".format(arguments.dataset,arguments.mode,TIME,top1_acc))
                 save(dataset,save_path)
