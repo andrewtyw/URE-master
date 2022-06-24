@@ -1,0 +1,116 @@
+PROJECT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+SEED="16" 
+CUDA_INDEX="2"  
+DATASET="tac"  # choice in ["tac","wiki"]
+specified_save_path=${PROJECT_PATH}"/data/clean_data"  # the selected clean data will store here
+METHOD="NL"    # choice in ["NL","O2U","DivideMix"]   the method to obtain clean data
+save_info=$(date "+%m%d%H%M%S")  # marker
+
+# if you have the following two huggingface models, specifiy their paths
+model_save_path=${PROJECT_PATH}"/data/model" # the 2 model will save here
+MNLI_PATH=${model_save_path}"/microsoft_deberta-v2-xlarge-mnli"
+BERT_PATH=${model_save_path}"/bert-base-uncased"
+#
+# # nohup sh /data/tywang/final_version/URE-master/main.sh >/data/tywang/final_version/URE-master/logs/NL_tac_SD16_whole.log 2>&1 &
+#
+
+# 
+if [ $DATASET == "tac" ]
+then
+    n_rel="41"  # we select annotated data with positive pseudo label, hence n_rel=41
+    template2label_path=${PROJECT_PATH}"/data/tac/template2label.pkl"
+    ratio=0.05 # select 0.05*Ntrain clean data
+    run_evaluation_path=${PROJECT_PATH}"/data/tac/test.json"  # rac test set
+    train_path=${PROJECT_PATH}"/data/tac/train.json"
+else
+    n_rel="80"
+    template2label_path=${PROJECT_PATH}"/data/wiki/template2label.pkl"
+    ratio=0.07 # select 0.07*Ntrain clean data
+    run_evaluation_path=${PROJECT_PATH}"/data/wiki/test.pkl" # evaluate on wiki80 test set
+    train_path=${PROJECT_PATH}"/data/wiki/train.pkl"
+fi
+
+config_path=${PROJECT_PATH}"/annotation/configs/config_"${DATASET}"_partial_constrain.json"
+annotated_path=${PROJECT_PATH}"/data/annotation_result/"${DATASET}"_annotation_assure.pkl"  # annotated data will save here
+clean_data_path=${specified_save_path}"/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pkl"  # NL产生的clean数据的路径 将会是这个
+check_point_path=${PROJECT_PATH}"/data/model/"${METHOD}"_"${DATASET}"_RT"${ratio}"_SD"${SEED}".pt"  # fine-tune好的NLI的路径 将会是这个
+
+
+
+echo
+echo "************************************configuration************************************"
+echo "seed:"${SEED}
+echo "cuda_index:"${CUDA_INDEX}
+echo "noisy_data_path:"${annotated_path}
+echo "n_relation:"${n_rel}
+echo "clean_data_path:"${clean_data_path}
+echo "fine_NLI_model_path:"${check_point_path}
+echo "**********************START_TIME: "$(date "+%Y-%m-%d %H:%M:%S")"***********************"
+echo 
+
+# download huggingface models
+# if you have already had 'microsoft_deberta-v2-xlarge-mnli' and 'bert-base-uncased', you can skip this
+cd ${PROJECT_PATH}/data/tac
+unzip tac.zip
+python -u ${PROJECT_PATH}/utils/prepare.py --model_save_folder ${model_save_path}
+
+
+# Stage 1: annotate train to get silver data
+python -u ${PROJECT_PATH}/annotation/run_evaluation.py \
+                                --model_path ${MNLI_PATH} \
+                                --cuda_index ${CUDA_INDEX} \
+                                --dataset ${DATASET} \
+                                --seed ${SEED} \
+                                --mode "train" \
+                                --run_evaluation_path ${train_path} \
+                                --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \
+                                --config_path ${config_path} \
+                                --given_save_path ${annotated_path} \
+                                --generate_data True \
+
+
+
+
+# # # Stage 2: get clean data
+python -u ${PROJECT_PATH}"/cleaning/NL.py" \
+                                    --seed ${SEED} \
+                                    --epoch 10  \
+                                    --cuda_index ${CUDA_INDEX} \
+                                    --e_tags_path ${PROJECT_PATH}"/data/"${DATASET}"/tags.pkl" \
+                                    --n_rel ${n_rel} \
+                                    --lr 4e-7 \
+                                    --ln_neg ${n_rel} \
+                                    --train_path ${annotated_path} \
+                                    --specified_save_path ${specified_save_path} \
+
+
+
+# Stage 3: use clean data to finetune NLI
+cd ${PROJECT_PATH}"/finetune" 
+python -u fintune_mnli.py    --batch_size 6 \
+                                --cuda_index ${CUDA_INDEX} \
+                                --seed ${SEED} \
+                                --lr 4e-7  \
+                                --ratio ${ratio} \
+                                --dataset ${DATASET} \
+                                --model_path ${MNLI_PATH} \
+                                --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \
+                                --selected_data_path  ${clean_data_path} \
+                                --config_path  ${PROJECT_PATH}"/annotation/configs/config_"${DATASET}"_partial_constrain.json" \
+                                --template2label_path ${PROJECT_PATH}"/data/"${DATASET}"/template2label.pkl" \
+                                --epoch 10 \
+                                --check_point_path ${check_point_path} \
+
+# Finally, use the fintuned NLI to infer on test set
+python -u /data/tywang/final_version/URE-master/annotation/run_evaluation.py \
+                                --model_path ${MNLI_PATH} \
+                                --cuda_index ${CUDA_INDEX} \
+                                --dataset ${DATASET} \
+                                --seed ${SEED} \
+                                --mode "test" \
+                                --run_evaluation_path ${run_evaluation_path} \
+                                --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \
+                                --config_path ${PROJECT_PATH}"/annotation/configs/config_"${DATASET}"_partial_constrain.json" \
+                                --load_dict True \
+                                --dict_path ${check_point_path} \

@@ -1,10 +1,3 @@
-"""
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved
-
-Author: Dejiao Zhang (dejiaoz@amazon.com)
-Date: 02/26/2021
-"""
-
 import random
 import torch
 import numpy as np
@@ -12,6 +5,10 @@ import transformers
 
 
 def set_global_random_seed(seed):
+    """to fix the random seed
+
+    Args: seed:int
+    """
     print("set seed:",seed)
     torch.manual_seed(seed)
     transformers.set_seed(seed)

@@ -5,47 +5,9 @@ from torch.nn import Parameter
 import numpy as np
 import random
 eps = 1e-8
+import re
+import sys
 device = torch.device('cuda:0')
-
-def setup_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-# contrast_loss
-# 仅仅根据两个B的embedding就可以计算出contrast loss
-
-# def get_pair_keyword(batch_prob, feat, k):
-#     """
-#
-#     :param batch_prob: 每个batch pro 的分布
-#     :param feat: [bs,sen_dim] 的张量
-#     :param k:
-#     :param device:
-#     :return:
-#     """
-#     couple = []
-#     L = len(batch_prob)
-#     similarity = torch.zeros([L, L])
-#     for i in range(L):
-#         similarity[i, :] = torch.cosine_similarity(batch_prob[i].unsqueeze(0), batch_prob)
-#         similarity[i][i] = 0
-#         if similarity[i, :].max().detach() == 1:
-#             index = torch.where(similarity[i, :] == 1)[0].detach().cpu().numpy()
-#             # return index
-#             # print(np.array(index))
-#             if len(index) < k - 1:
-#                 couple.append(feat[torch.topk(similarity[i], k - 1)[1]])
-#             else:
-#                 choices = torch.from_numpy(np.random.choice(np.array(index), k - 1))
-#
-#                 couple.append(feat[choices])
-#         else:
-#             couple.append(feat[torch.topk(similarity[i], k - 1)[1]])
-#     #         print(feat[torch.topk(similarity[i],k-1)[1]].shape)
-#     res = torch.cat((feat.unsqueeze(1), torch.stack(couple)), dim=1)
-#     return res, similarity
 
 
 def get_pair(batch_prob, feat, k):
@@ -130,14 +92,14 @@ class DispersionLoss(nn.Module):
         return loss_d
 
 class SupConLoss(nn.Module):
-    def __init__(self, temperature=0.07, contrast_mode='all', base_temperature=0.07, device=torch.device('cuda:0')):
+    def __init__(self,args, temperature=0.07, contrast_mode='one', base_temperature=0.07):
         """
         :param temperature:  t
         :param contrast_mode:
         :param base_temperature:
         """
         super(SupConLoss, self).__init__()
-        self.device = device
+        self.device = torch.device("cuda:{}".format(args.cuda_index))
         self.temperature = temperature
         self.contrast_mode = contrast_mode
         self.base_temperature = base_temperature
@@ -194,7 +156,7 @@ class SupConLoss(nn.Module):
         mask = mask * logits_mask
 
         # compute log_prob
-        exp_logits = torch.exp(logits) * logits_mask
+        exp_logits = torch.exp(logits) * logits_mask  #[bs, n_contrastive]
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
 
         # compute mean of log-likelihood over positive
@@ -202,10 +164,12 @@ class SupConLoss(nn.Module):
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
+
+        nonreduce_loss = loss.clone().detach().cpu()
         # loss = - mean_log_prob_pos
         loss = loss.view(anchor_count, batch_size).mean()
 
-        return loss
+        return loss,nonreduce_loss
 
 
 def target_distribution(batch: torch.Tensor) -> torch.Tensor:
@@ -239,3 +203,123 @@ class KCL(nn.Module):
     def forward(self, prob1, prob2):
         kld = self.kld(prob1, prob2)
         return kld.mean()
+
+
+class Augmentation:
+    """
+        This class is functioned as generating test augmentation by replacing the subject or 
+        object to other entity with the same type. 
+        For example,
+    """
+    def __init__(self,data):
+        self.Dict = self.__get_subj_obj_dict(data)
+
+    def get_augs(self,texts,k):
+        """
+        Args:
+            texts: List[str], i.e. [x1,x2,x3..] where xi is a sentence
+            k: int, the number of augmentation need to be generate for each sentence
+        Return:
+            List[List[str]], i.e.
+                [[x1', x2', x3' ...],
+                 [x1'',x2'',x3''...],
+                 [...]]
+                 where x1' and x1'' are diffenent augmentation of x1.
+        """
+        all_new_texts = [list() for _k in range(k)]
+        for text in texts:
+            new_texts = self.get_aug(text,k)
+            for i in range(k):
+                all_new_texts[i].append(new_texts[i])
+        return all_new_texts
+    def __get_subj_obj_dict(self,data):
+        Dict = {'subject':dict(), 'object':dict()}
+        all_subj_type = list(set(data['subj_type']))
+        all_obj_type = list(set(data['obj_type']))
+        self.all_subj_type = all_subj_type
+        self.all_obj_type = all_obj_type
+        SS = "<S:("+"|".join(all_subj_type)+")>(.*)</S:.*>"
+        SO = "<O:("+"|".join(all_obj_type)+")>(.*)</O:.*>"
+        CPS = re.compile(SS)
+        CPO = re.compile(SO)
+        self.CPS = CPS
+        self.CPO = CPO
+        for subj,subj_type, obj,obj_type in zip(
+            data['subj'], data['subj_type'],data['obj'], data['obj_type'] 
+        ):
+            if subj_type not in Dict['subject']:
+                Dict['subject'][subj_type] = [subj]
+            else:
+                Dict['subject'][subj_type].append(subj)
+            
+            if obj_type not in Dict['object']:
+                Dict['object'][obj_type] = [obj]
+            else:
+                Dict['object'][obj_type].append(obj)
+        return Dict
+    def get_aug(self,text,k = 1):
+        """
+            针对这一个text, 拿到k个aug, 以列表返回
+        """
+        try:
+            subj_search_res = self.CPS.search(text)
+            obj_search_res = self.CPO.search(text)
+            try:
+                subj_start, subj_end = subj_search_res.span(2) 
+                parse_subjtype, subj = subj_search_res.groups()
+                assert parse_subjtype.strip() in self.all_subj_type
+            except:
+               subj_start, subj_end =  (None,None)
+               parse_subjtype, subj = (None, None)
+            try:
+                obj_start, obj_end = obj_search_res.span(2)
+                parse_objtype, obj = obj_search_res.groups()
+                assert parse_objtype.strip() in self.all_obj_type
+            except:
+                obj_start, obj_end = (None, None)
+                parse_objtype, obj =  (None, None)
+            
+            assert subj_start is not None or obj_start is not None
+            
+        except:
+            print(text)
+            sys.exit()
+
+        if subj_start is None or obj_start is None:
+            if subj_start is None:
+                try:
+                    random_entity = random.choices(self.Dict['object'][parse_objtype],k=k)
+                except:
+                    print(text)
+                    sys.exit()
+                start,end = obj_start, obj_end
+            else:
+                try:
+                    random_entity = random.choices(self.Dict['subject'][parse_subjtype],k=k)
+                except:
+                    print(text)
+                    sys.exit()
+                start,end = subj_start, subj_end
+        else:
+            rn = random.random()
+            if rn>0.5:
+                # 换subj的
+                try:
+                    random_entity = random.choices(self.Dict['subject'][parse_subjtype],k=k)
+                except:
+                    print(text)
+                    sys.exit()
+                start,end = subj_start, subj_end
+            else:
+                # 换obj的
+                try:
+                    random_entity = random.choices(self.Dict['object'][parse_objtype],k=k)
+                except:
+                    print(text)
+                    sys.exit()
+                start,end = obj_start, obj_end
+        texts = []
+        for entity in random_entity:
+            aug_text = text[:start]+" "+entity+" "+text[end:]
+            texts.append(aug_text)
+        return texts
