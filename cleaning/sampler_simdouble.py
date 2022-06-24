@@ -86,8 +86,7 @@ def sampler(args):
         id2label={}
         for key,value in label2id.items():
             id2label[value]=key
-        # data=load('/home/jwwang/URE_share/outcome/NL/NL_tac_T0529130943.pkl')
-        # data=load('/home/jwwang/URE_share/outcome/NL/clean_data/wiki/NL_wiki_T0528115945.pkl')
+
         confidence_path='/home/jwwang/URE_share/outcome/NL/clean_data/wiki/wiki_seed{}_pconfidence.pkl'.format(args.seed)
         p_label_confidence=load(confidence_path)
         confidence_index = np.argsort(np.array(p_label_confidence))[::-1]
@@ -161,7 +160,7 @@ if __name__ == '__main__':
     parser.add_argument("--seed", type=int, default=16, help="as named")
     parser.add_argument("--dataset", type=str, default='wiki', help="as named")
     parser.add_argument("--threshold", type=float, default=0.08, help="as named")
-    parser.add_argument("--save_dir", type=str, default='/home/jwwang/URE_share/outcome/NL/clean_data', help="as named")
+    parser.add_argument("--save_dir", type=str, default='', help="as named")
 
     args=parser.parse_args()
     sampler(args)

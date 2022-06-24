@@ -2,7 +2,7 @@ PROJECT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 SEED="16" 
 CUDA_INDEX="3"  
-DATASET="wiki"  # choice in ["tac","wiki"], stands for TACRED and Wiki80
+DATASET="tac"  # choice in ["tac","wiki"], stands for TACRED and Wiki80
 specified_save_path=${PROJECT_PATH}"/data/clean_data"  # the selected clean data will store here
 METHOD="NL"    # choice in ["NL","O2U","DivideMix"]   the method to obtain clean data
 save_info=$(date "+%m%d%H%M%S")  # marker
@@ -49,29 +49,29 @@ echo "fine_NLI_model_path:"${check_point_path}
 echo "**********************START_TIME: "$(date "+%Y-%m-%d %H:%M:%S")"***********************"
 echo 
 
-# unzip dataset
-cd ${PROJECT_PATH}/data/tac
-unzip -o tac.zip
-cd ${PROJECT_PATH}/data/wiki
-unzip -o wiki.zip
+# # unzip dataset
+# cd ${PROJECT_PATH}/data/tac
+# unzip -o tac.zip
+# cd ${PROJECT_PATH}/data/wiki
+# unzip -o wiki.zip
 
-# download huggingface models
-# if you have already had 'microsoft_deberta-v2-xlarge-mnli' and 'bert-base-uncased', you can skip this
-python -u ${PROJECT_PATH}/utils/prepare.py --model_save_folder ${model_save_path}
+# # download huggingface models
+# # if you have already had 'microsoft_deberta-v2-xlarge-mnli' and 'bert-base-uncased', you can skip this
+# python -u ${PROJECT_PATH}/utils/prepare.py --model_save_folder ${model_save_path}
 
 
-# # Stage 1: annotate train to get silver data
-python -u ${PROJECT_PATH}/annotation/run_evaluation.py \
-                                --model_path ${MNLI_PATH} \
-                                --cuda_index ${CUDA_INDEX} \
-                                --dataset ${DATASET} \
-                                --seed ${SEED} \
-                                --mode "train" \
-                                --run_evaluation_path ${train_path} \
-                                --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \
-                                --config_path ${config_path} \
-                                --given_save_path ${annotated_path} \
-                                --generate_data True \
+# # # Stage 1: annotate train to get silver data
+# python -u ${PROJECT_PATH}/annotation/run_evaluation.py \
+#                                 --model_path ${MNLI_PATH} \
+#                                 --cuda_index ${CUDA_INDEX} \
+#                                 --dataset ${DATASET} \
+#                                 --seed ${SEED} \
+#                                 --mode "train" \
+#                                 --run_evaluation_path ${train_path} \
+#                                 --label2id_path ${PROJECT_PATH}"/data/"${DATASET}"/label2id.pkl" \
+#                                 --config_path ${config_path} \
+#                                 --given_save_path ${annotated_path} \
+#                                 --generate_data True \
 
 
 

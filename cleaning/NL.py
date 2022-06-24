@@ -10,12 +10,12 @@ CURR_DIR = str(PATH.parent.absolute())
 sys.path.append(CURR_DIR)
 P = PATH.parent
 print("current dir: ",CURR_DIR)
-for i in range(1):  # add parent path, height = 3
+for i in range(1):  
     P = P.parent
     PROJECT_PATH = str(P.absolute())
     sys.path.append(str(P.absolute()))
 import time
-TIME=time.strftime("%m%d%H%M%S", time.localtime())# 记录被初始化的时间
+TIME=time.strftime("%m%d%H%M%S", time.localtime())
 print("time",TIME)
 from utils.dict_relate import dict_index
 from utils.pickle_picky import load, save
@@ -42,7 +42,7 @@ class Train_dataset(Dataset):
     def __getitem__(self, index):
         return {
             'text': self.data['text'][index],
-            'p_label': self.data['p_label'][index],  # pseudo_label
+            'p_label': self.data['p_label'][index],  
             'index': self.data['index'][index],
         }
 
@@ -86,15 +86,15 @@ def NLNL_main(args):
     sccl_model:SCCL_BERT = SCCL_BERT(bert_model, args.max_len,
                            device, args.n_rel, True, tags).to(device)
 
-    ##
-    # set training related
-    # net:NLNL_Net = NLNL_Net(sccl_model).to(device)
+    
+    
+    
     optimizer = torch.optim.AdamW([
         {'params': sccl_model.sentbert.parameters()},
         {'params': sccl_model.out.parameters(), 'lr': args.lr*args.lr_scale}], lr=args.lr)
-    ##
+    
 
-    # 产生每个类的weight
+    
     weight = torch.FloatTensor(num_classes).zero_() + 1.
     for i in range(num_classes):
         weight[i] = (torch.from_numpy(np.array(train_data['p_label']).astype(int)) == i).sum()  
@@ -102,36 +102,36 @@ def NLNL_main(args):
 
 
 
-    ##
+    
 
     criterion = nn.CrossEntropyLoss()
     criterion_nll = nn.NLLLoss()
-    criterion_nr = nn.CrossEntropyLoss(reduction='none')  # compute per-sample losses
+    criterion_nr = nn.CrossEntropyLoss(reduction='none')  
     criterion.to(device)
     criterion_nll.to(device)
     criterion_nr.to(device)
-    ##
+    
 
-    ##
-    # NLNL parameters
+    
+    
     train_preds = torch.zeros(N_train, num_classes) - 1.
     num_hist = 10
-    train_preds_hist = torch.zeros(N_train, num_hist, num_classes)   # [45000,10,10]
+    train_preds_hist = torch.zeros(N_train, num_hist, num_classes)   
     pl_ratio = 0.
     nl_ratio = 1.-pl_ratio  
-    train_losses = torch.zeros(N_train) - 1.  # 每个数据的loss
-    ##
+    train_losses = torch.zeros(N_train) - 1.  
+    
 
-    ##
-    # train
+    
+    
     for epoch in range(args.epoch):
         train_loss = train_loss_neg = train_acc = 0.0
         pl = 0.; nl = 0.
         sccl_model.train()
         accs = []
         losses = []
-        data_predict = torch.zeros(N_train,dtype=torch.long) # 预测值
-        data_predict_confidence = torch.zeros(N_train) # 预测值的confidence
+        data_predict = torch.zeros(N_train,dtype=torch.long) 
+        data_predict_confidence = torch.zeros(N_train) 
         for i, data in enumerate(train_loader):
             
             text, labels, index = data['text'],data['p_label'],data['index']
@@ -140,35 +140,35 @@ def NLNL_main(args):
             assert labels_neg.max() <= num_classes-1
             assert labels_neg.min() >= 0
             assert (labels_neg != labels.unsqueeze(-1).repeat(1, args.ln_neg)
-                    ).sum() == len(labels)*args.ln_neg  # 保证得到的都是和原来label不同的数据
+                    ).sum() == len(labels)*args.ln_neg  
             labels = labels.to(device)
             labels_neg = labels_neg.to(device)
             logits = sccl_model.out(sccl_model.get_embeddings_PURE(text))
 
-            s_neg = torch.log(torch.clamp(1.-F.softmax(logits, -1), min=1e-5, max=1.))  # log(1-pk)
+            s_neg = torch.log(torch.clamp(1.-F.softmax(logits, -1), min=1e-5, max=1.))  
             s_neg *= weight[labels].unsqueeze(-1).expand(s_neg.size()).to(device)
             _, pred = torch.max(logits.data, -1)  
 
-            ##
-            # find labels for fewshot
+            
+            
             confidences = F.softmax(logits,-1)
             confidence = confidences[np.array([i for i in range(len(logits))]),pred]
-            data_predict[index] = pred.detach().cpu() # 记录每个train data的prediction
-            data_predict_confidence[index] = confidence.detach().cpu() # 记录每个train数据的prediction的confidence
+            data_predict[index] = pred.detach().cpu() 
+            data_predict_confidence[index] = confidence.detach().cpu() 
             stop = 1
-            ##
+            
 
-            acc = float((pred == labels.data).sum())   # batch的正确个数
+            acc = float((pred == labels.data).sum())   
             train_acc += acc
             accs.append(acc/len(index))
 
             train_loss += logits.size(0)*criterion(logits, labels).data
             train_loss_neg += logits.size(0) * criterion_nll(s_neg, labels_neg[:, 0]).data
 
-            train_losses[index] = criterion_nr(logits, labels).cpu().data  # 记录这次每个数据的 CEloss
+            train_losses[index] = criterion_nr(logits, labels).cpu().data  
             
 
-            labels = labels*0 - 100  #不使用PL, label=-100 可以使得Cross-entropy loss=0
+            labels = labels*0 - 100  
             
             loss_neg = criterion_nll(s_neg.repeat(args.ln_neg, 1), labels_neg.t().contiguous().view(-1)) * float((labels_neg >= 0).sum())
             loss_pl = criterion(logits, labels)* float((labels >= 0).sum())
@@ -183,39 +183,39 @@ def NLNL_main(args):
             train_preds[index.cpu()] = F.softmax(logits, -1).cpu().data
 
             pl += float((labels >= 0).sum())
-            #print('\r', "EPOCH[{}] step {}/{} ,  loss: {:.4f} train_acc: {:.4f}  ".format(epoch+1,i+1,len(train_loader),np.mean(losses),np.mean(accs)), end='', flush=True)
+            
             print("EPOCH[{}] step {}/{} ,  loss: {:.4f} train_acc: {:.4f}  ".format(epoch+1,i+1,len(train_loader),np.mean(losses),np.mean(accs)))
             nl += float((labels_neg[:, 0] >= 0).sum())
-            # if i==10:break
+            
 
 
-        ## 用于在tac fewshot的时候, 每类都选前k confident的数据.
-        # select topk confident data of each category in predition 
+        
+        
         predicts = dict()
         for i,(pre,confi) in enumerate(zip(data_predict,data_predict_confidence)):
             pre = pre.item()
             confi = confi.item()
             if pre not in predicts:
-                predicts[pre] = [(i,confi)] # (data_index, confidence)
+                predicts[pre] = [(i,confi)] 
             else:
                 predicts[pre].append((i,confi))
-        for k in predicts.keys():  # sort it 
+        for k in predicts.keys():  
             predicts[k].sort(key=lambda x : x[1],reverse=True)
 
 
         topks = [1,2,3]
         for topk in topks:
             selected_index = []
-            for k in predicts.keys(): # 遍历所有的类别
+            for k in predicts.keys(): 
                 items  = [item[0] for item in predicts[k][:topk]]
-                selected_index.extend(items) # 记录下所选数据的标签
+                selected_index.extend(items) 
             selected_label = [train_data['label'][i] for i in selected_index]
-            # print(Counter(selected_label))
+            
             selected_data = dict_index(train_data,selected_index)
-            selected_data['top1'] = selected_data['p_label'] = selected_data['label'] # fewshot模式, 直接用label.
-            # print(Counter(selected_data['top1']))
-            #save(selected_data,"/home/tywang/URE-master/scripts/fewshot_33lab/tac_confi_select_k{}.pkl".format(topk))
-        ##
+            selected_data['top1'] = selected_data['p_label'] = selected_data['label'] 
+            
+            
+        
 
 
 
@@ -224,62 +224,53 @@ def NLNL_main(args):
         train_acc /= N_train
         pl_ratio = pl / float(N_train)
 
-        ## 记录confident
+        
         assert train_preds[train_preds < 0].nelement() == 0
         train_preds_hist[:, epoch % num_hist] = train_preds
         train_preds = train_preds*0 - 1.
         assert train_losses[train_losses < 0].nelement() == 0
         train_losses = train_losses*0 - 1.
-        ##
+        
 
         
-        ##  根据confidence选择clean数据
-        # 计算仅仅由 本身confidence 排序得到的数据的acc
-        p_label_confidence = train_preds_hist.mean(1)[torch.arange(N_train), np.array(train_data['p_label']).astype(int)] # shape = N_train
-        confidence_index = np.argsort(np.array(p_label_confidence))[::-1]  # confidence从大到小排序
+        
+        
+        p_label_confidence = train_preds_hist.mean(1)[torch.arange(N_train), np.array(train_data['p_label']).astype(int)] 
+        confidence_index = np.argsort(np.array(p_label_confidence))[::-1]  
         indexes = []
         ratios = [0.01,0.02,0.025,0.03,0.04,0.05,0.06,0.07,0.075,0.08,0.09,0.1]
         if mode=="wiki":
             n_train = 40320
-        else:# tac
+        else:
             n_train = 68124
         select_num = [int(rt*n_train) for rt in ratios]
         accs = []
         for select_n,rt in zip(select_num,ratios):
             selected403  = confidence_index[:int(select_n)]
             indexes.append(selected403)
-            # 计算acc
-            Slabel = np.array([train_data['label'][index] for index in selected403]) # ground-truth
-            Sp_label = np.array([train_data['p_label'][index] for index in selected403]) # pseudo label
+            
+            Slabel = np.array([train_data['label'][index] for index in selected403]) 
+            Sp_label = np.array([train_data['p_label'][index] for index in selected403]) 
             n_cate = len(set(Sp_label))
             acc = sum(Slabel==Sp_label)/len(Sp_label)
             accs.append(acc)
             print("top confident {} data, num={}, acc= {}, n_relation:{}".format(rt,select_n,acc,n_cate))
         if epoch+1==args.epoch:
-            # select 数据
+            
             ratio = [0.01,0.02,0.025,0.03,0.04,0.05,0.06,0.07,0.075,0.08,0.09,0.1]
             for index,rt in zip(indexes[:len(ratio)],ratio):
                 selected_data = dict_index(train_data,index)
                 acc = sum(np.array(selected_data['label'])==np.array(selected_data['top1']))/len(selected_data['label'])
                 print("selected data acc:{}, num:{}".format(acc,len(selected_data['text'])))
-                if args.specified_save_path != "": 
-                    # 指定了clean数据的存放的位置(文件夹), 按存放位置来
-                    # 格式e.g.: NL_tac_RT0.05.pkl
-                    save(selected_data,os.path.join(args.specified_save_path,"NL_{}_RT{}_SD{}.pkl".format(args.dataset,rt,args.seed)))
-                else:
-                    save(selected_data,"/data/tywang/URE_share/NL/outputs/clean/NL_{}_RT{}_T{}_acc{:.4f}.pkl".format(args.dataset,rt,TIME,acc))
+                assert args.specified_save_path != ""
+                save(selected_data,os.path.join(args.specified_save_path,"NL_{}_RT{}_SD{}.pkl".format(args.dataset,rt,args.seed)))
 
-            metric = {
-                "noisy_metric":p_label_confidence,
-                "clean_index":inds_clean,
-                "noisy_index":inds_noisy
-            }
-            save(metric,"/data/tywang/URE_share/NL/outputs/metrics/NL_{}_T{}.pkl".format(args.dataset,TIME))
-        ##
+
+        
 
 
 
-        # 画分布图
+        
         if args.plot:
             clean_plot = train_preds_hist.mean(1)[torch.arange(N_train)[
                 inds_clean], np.array(train_data['p_label']).astype(int)[inds_clean]]
@@ -313,26 +304,15 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=10, help='as named')
     parser.add_argument("--specified_save_path", type=str,default="", help="as named")
 
-    
-    """wiki"""
-    # parser.add_argument('--n_rel', type=int, default=80, help='as named')
-    # parser.add_argument("--train_path", type=str,
-    #                     default="/data/tywang/URE_share/data/wiki/train_annotated.pkl", help="as named")
-    # parser.add_argument("--e_tags_path", type=str,
-    #                     default="/data/tywang/URE_share/data/wiki/tags.pkl", help="形如<S:PERSON>的tag")
-    # parser.add_argument("--save_dir", type=str,
-    #                     default="/data/tywang/URE_share/NL/outputs", help="it is used to save imgs")
-    # parser.add_argument('--ln_neg', type=int, default=80,
-    #                     help='number of negative labels on single image for training, equal to n_rel')
 
     """tac"""
-    parser.add_argument('--n_rel', type=int, default=41, help='as named') # 由于用于选clean的数据是pseudo_label=positive的数据, 因此只有41个类
+    parser.add_argument('--n_rel', type=int, default=41, help='as named') 
     parser.add_argument("--train_path", type=str,
-                        default="/data/tywang/final_version/URE-master/data/annotation_result/tac_annotation.pkl", help="as named")
+                        default="tac_annotation.pkl", help="as named")
     parser.add_argument("--e_tags_path", type=str,
-                        default="/data/tywang/URE_share/data/tac/tags.pkl", help="as named")
+                        default="tags.pkl", help="as named")
     parser.add_argument("--save_dir", type=str,
-                        default="/data/tywang/URE_share/NL/outputs", help="as named")
+                        default="outputs", help="as named")
     parser.add_argument('--ln_neg', type=int, default=41,
                         help='number of negative labels on single image for training (ex. 110 for cifar100)')
 
@@ -345,8 +325,7 @@ if __name__ == "__main__":
                         default='/data/transformers/bert-base-uncased', help='as named')
     parser.add_argument('--max_len', type=int, default=64,
                         help='length of input sentence')
-    parser.add_argument('--plot', type=bool, default=True,
-                        help='是否画分布图')
+    parser.add_argument('--plot', type=bool, default=True)
     args = parser.parse_args()
 
 
