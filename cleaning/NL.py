@@ -171,9 +171,9 @@ def NLNL_main(args):
             labels = labels*0 - 100  
             
             loss_neg = criterion_nll(s_neg.repeat(args.ln_neg, 1), labels_neg.t().contiguous().view(-1)) * float((labels_neg >= 0).sum())
-            loss_pl = criterion(logits, labels)* float((labels >= 0).sum())
+            # loss_pl = criterion(logits, labels)* float((labels >= 0).sum())
             
-            loss = (loss_pl+loss_neg) / (float((labels >= 0).sum()) +float((labels_neg[:, 0] >= 0).sum()))
+            loss = (loss_neg) / (float((labels >= 0).sum()) +float((labels_neg[:, 0] >= 0).sum()))
             loss.backward()
             optimizer.step()
             l = logits.size(0)*loss.detach().cpu().data
