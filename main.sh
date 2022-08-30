@@ -107,7 +107,7 @@ python -u fintune_mnli.py    --batch_size 6 \
                                 --check_point_path ${check_point_path} \
 
 # # Finally, use the fintuned NLI to infer on test set
-python -u /data/tywang/final_version/URE-master/annotation/run_evaluation.py \
+python -u ${PROJECT_PATH}"/annotation/run_evaluation.py" \
                                 --model_path ${MNLI_PATH} \
                                 --cuda_index ${CUDA_INDEX} \
                                 --dataset ${DATASET} \
