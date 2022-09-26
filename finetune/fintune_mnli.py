@@ -63,7 +63,7 @@ def fine_tune_v3(args):
     model = AutoModelForSequenceClassification.from_pretrained(args.model_path, num_labels=3)
     if args.load_weight :
         print("load weight ",args.model_weight_path)
-        model.load_state_dict(torch.load(args.model_weight_path))
+        model.load_state_dict(torch.load(args.model_weight_path,map_location='cpu'))
     model = model.to(device)
     
     
