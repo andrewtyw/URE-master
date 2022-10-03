@@ -1,7 +1,6 @@
 *.pyc
 *.log
 *.pt
-*.txt
 *.jpg
 *.ipynb
 logs
@@ -29,3 +28,4 @@ data/tac/*.json
 data/tac/*.pkl
 main_extra.sh
 data/wiki/*.pkl
+TEST*.sh

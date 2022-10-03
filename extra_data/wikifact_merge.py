@@ -45,6 +45,7 @@ def merge(args):
     target = load(args.clean_data_path)
     try:
         del target['score']
+        del target['confidence']
     except:
         pass
     assert inject_data.keys()==target.keys()

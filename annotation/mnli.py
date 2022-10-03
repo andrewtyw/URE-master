@@ -99,7 +99,7 @@ class _NLIRelationClassifier(Classifier):
         if arguments.load_dict:
             print("load weight ",arguments.dict_path)
 
-            self.model.load_state_dict(torch.load(arguments.dict_path))
+            self.model.load_state_dict(torch.load(arguments.dict_path,map_location='cpu'))
         else:
             print("Did not load weight")
         self.config = AutoConfig.from_pretrained(pretrained_model)
@@ -390,7 +390,7 @@ class NLIRelationClassifierWithMappingHead(_NLIRelationClassifier):
                 arguments.dataset,len(outputs),TIME
                 ))
             if arguments.mode!="0.01dev":
-                print("save to ",save_path)
+                print("save entailment outputs:")
                 save(outputs,save_path) 
         else: 
             print("load outputs")

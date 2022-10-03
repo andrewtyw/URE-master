@@ -91,8 +91,7 @@ python -u ${PROJECT_PATH}"/cleaning/NL.py" \
 
 
 # # Stage 3: use clean data to finetune NLI
-cd ${PROJECT_PATH}"/finetune" 
-python -u fintune_mnli.py    --batch_size 6 \
+python -u ${PROJECT_PATH}"/finetune/fintune_mnli.py"    --batch_size 6 \
                                 --cuda_index ${CUDA_INDEX} \
                                 --seed ${SEED} \
                                 --lr 4e-7  \

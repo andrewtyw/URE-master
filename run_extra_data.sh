@@ -39,8 +39,7 @@ python -u ${PROJECT_PATH}"/extra_data/wikifact_merge.py" --dataset ${DATASET} \
 
 
 # then we use the merged data to finetune TE model
-cd ${PROJECT_PATH}"/finetune" 
-python -u fintune_mnli.py    --batch_size 6 \
+python -u ${PROJECT_PATH}"/finetune/fintune_mnli.py"    --batch_size 6 \
                                 --cuda_index ${CUDA_INDEX} \
                                 --seed ${SEED} \
                                 --lr 4e-7  \

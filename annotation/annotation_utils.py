@@ -65,7 +65,7 @@ def set_global_random_seed(seed):
 
 
 def save(obj, path_name):
-    print("保存到 ",path_name)
+    print("save to ",path_name)
     with open(path_name, 'wb') as file:
         pickle.dump(obj, file)
 def load_json(path):

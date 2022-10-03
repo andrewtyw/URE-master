@@ -31,7 +31,8 @@ from annotation_utils import find_optimal_threshold, apply_threshold,load,save,s
 from annotation_utils import find_uppercase,top_k_accuracy,dict_index
 from utils.clean import get_format_train_text
 set_global_random_seed(arguments.seed)  
-
+import warnings
+warnings.filterwarnings("ignore")
 
 if arguments.dataset=="wiki":
     wiki_data = load(arguments.run_evaluation_path)
@@ -181,7 +182,11 @@ for configuration in config:
         print("dev, automatically find threshold")
         optimal_threshold, _ = find_optimal_threshold(labels, output)  
     elif arguments.dataset=="tac":
-        optimal_threshold = get_optimal_threshold()
+        if arguments.default_optimal_threshold>0:
+            print("set default threshold")
+            optimal_threshold = arguments.default_optimal_threshold
+        else:
+            optimal_threshold = get_optimal_threshold()
     else:
         
         optimal_threshold = 0
@@ -230,24 +235,15 @@ for configuration in config:
     configuration["top-2"], top2_p_rel = top_k_accuracy(applied_threshold_output, labels, k=2, id2labels=id2labels)
     configuration["top-3"], top3_p_rel = top_k_accuracy(applied_threshold_output, labels, k=3, id2labels=id2labels)
     print("*"*20)
-    print("labeled f1(micro):{:.6f}".format(f1))
+    print("f1(micro):{:.6f}".format(f1))
     print("precision(micro):{:.6f}".format(pre))
     print("recall(micro):{:.6f}".format(rec))
     print("*"*20)
-    print("labeled f1(macro):{:.6f}".format(macro_f1))
+    print("f1(macro):{:.6f}".format(macro_f1))
     print("precision(macro):{:.6f}".format(macro_pre))
     print("recall(macro):{:.6f}".format(macro_rec))
     
     
-    print("*"*20) 
-    print("no label f1(micro):{:.6f}".format(micro_f1_nolabel))
-    print("no label precision(micro):{:.6f}".format(micro_pre_nolabel))
-    print("no label recall(micro):{:.6f}".format(micro_rec_nolabel))
-    print("*"*20) 
-    print("no labeled f1(macro):{:.6f}".format(macro_f1_nolabel))
-    print("no label precision(macro):{:.6f}".format(macro_pre_nolabel))
-    print("no label recall(macro):{:.6f}".format(macro_rec_nolabel))
-    print("*"*20)
     
     for i in range(1,4):
         print("top{} acc={:.6f}".format(i, configuration["top-{}".format(i)]))
