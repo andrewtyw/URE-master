@@ -3,7 +3,7 @@ Code for the paper "XXXX"
 ## Environment
 In order to exactly reproduce the result, please setup the environment by `requirements.txt`
 ## Dataset
-`TACRED` is not provided repository, but you could obtain it from [here](https://nlp.stanford.edu/projects/tacred/). After downloading please put `{train,dev,test}.json` into `/URE-master/data/tac`.
+`TACRED` is not provided in this repository, but you could obtain it from [here](https://nlp.stanford.edu/projects/tacred/). After downloading please put `{train,dev,test}.json` into `/URE-master/data/tac`.
 ## Run And Reproduce
 1. Clean Data Finetune
 ```
