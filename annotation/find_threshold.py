@@ -39,6 +39,9 @@ def get_optimal_threshold():
     arguments.run_evaluation_path = arguments.run_evaluation_path.replace("{}.json".format(arguments.mode),"0.01dev.json")
     mode_temp = arguments.mode
     outputs_temp = arguments.outputs
+    if arguments.args.before_extra_dict_path is not None and arguments.dict_path is not None:
+        dict_path_temp = arguments.dict_path
+        arguments.dict_path = arguments.args.before_extra_dict_path # we use the threshold before finetuning
     arguments.outputs = None
     arguments.mode = "0.01dev"
     basic=False
@@ -119,11 +122,13 @@ def get_optimal_threshold():
         pre, rec, f1, _ = precision_recall_fscore_support(  
             labels, top1, average="micro", labels=list(range(1, n_labels)) if arguments.dataset=="tac" else None
         )
-        print("pre:",pre)
-        print("rec:",rec)
-        print("f1:",f1)
+        print("precision (on 0.01dev set):",pre)
+        print("recall (on 0.01dev set):",rec)
+        print("micro-F1 (on 0.01dev set):",f1)
     arguments.mode = mode_temp
     arguments.outputs = outputs_temp
     arguments.run_evaluation_path = run_evaluation_path_temp
+    if arguments.args.before_extra_dict_path is not None and arguments.dict_path is not None:
+        arguments.dict_path = dict_path_temp
     set_global_random_seed(arguments.seed)
     return optimal_threshold

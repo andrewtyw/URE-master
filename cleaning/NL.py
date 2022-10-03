@@ -22,6 +22,7 @@ from utils.pickle_picky import load, save
 from utils.randomness import set_global_random_seed
 from model.sccl import SCCL_BERT
 from sentence_transformers import SentenceTransformer
+from sklearn.metrics import accuracy_score
 from torch.utils.data import Dataset, dataset
 import copy
 import torch.nn.functional as F
@@ -49,8 +50,76 @@ class Train_dataset(Dataset):
     def __len__(self):
         return len(self.data['text'])
 
+def sampler(args,train_data):
+    if args.dataset=='tac':
+        N_training_data = 68124
+    elif args.dataset=='wiki':
+        N_training_data = 40320
+    else:
+        print('invalid dataset!')
+        sys.exit()
+    select_num=int(args.eta*N_training_data)
+    # train_data=load(args.train_data)
+    train_data['p_label'] = train_data['top1']
+    label2id=load(args.label2id)
+    id2label={}
+    for key,value in label2id.items():
+        id2label[value]=key
+    p_label_confidence=train_data['confidence']
+    # p_label_confidence=load(confidence_path)  # 每个label的confidence
+    print(len(p_label_confidence))
+    print(len(train_data['text']))
+    confidence_index = np.argsort(np.array(p_label_confidence))[::-1] 
+
+    #SELECT FIRST:  select fixed clean data based on \eta. 
+    selected403  = confidence_index[:int(select_num)]
+    Slabel = np.array([train_data['label'][index] for index in selected403]) # ground-truth
+    Sp_label = np.array([train_data['p_label'][index] for index in selected403]) # pseudo label
+    counter=Counter()
+    for item in Sp_label:
+        counter[item]+=1
+    counter=sorted(counter.items(),key=lambda x:x[1],reverse=True)
+    print('*'*50)
+
+    n_cate = len(set(Sp_label))
+    acc = sum(Slabel==Sp_label)/len(Sp_label)
+    print("\ntop{} confident data acc= {}, n_classes={}, min_confidence={}".format(select_num,acc,n_cate,p_label_confidence[selected403[-1]]))
 
 
+    #SELECT SECOND
+    selected2=confidence_index[int(select_num):]  
+    hashmap={} 
+    for index in selected2:
+        if train_data['p_label'][index] not in hashmap.keys():
+            hashmap[train_data['p_label'][index]]=[index]
+        else:
+            hashmap[train_data['p_label'][index]].append(index)
+    select_res=[]
+    for k,v in hashmap.items():
+        select_res.extend(v[:int(len(v)/len(selected2)*args.delta)])
+
+
+    select_res.extend(selected403)
+
+    Slabel = np.array([train_data['label'][index] for index in select_res]) # ground-truth
+    Sp_label = np.array([train_data['p_label'][index] for index in select_res]) # pseudo label
+    counter=Counter()
+    for item in Sp_label:
+        counter[item]+=1
+    counter=sorted(counter.items(),key=lambda x:x[1],reverse=True)
+    print('*'*50)
+    for key,val in counter:
+        print('{}_{}'.format(id2label[key],val),end='|')
+    print()
+    n_cate = len(set(Sp_label))
+    acc = sum(Slabel==Sp_label)/len(Sp_label)
+    
+
+    
+    selected_data = dict_index(train_data,select_res)
+    acc = accuracy_score(selected_data['label'],selected_data['p_label'])
+    print("threshold:{}, num= {}, acc= {}, n_classes:{}".format(args.delta,len(select_res),acc,n_cate))
+    save(selected_data,os.path.join(args.specified_save_path,"NL_sampler_{}_delta{}_eta{}_SD{}.pkl".format(args.dataset,args.delta,args.eta,args.seed)))
 
 def NLNL_main(args):
     print(args)
@@ -264,7 +333,9 @@ def NLNL_main(args):
                 print("selected data acc:{}, num:{}".format(acc,len(selected_data['text'])))
                 assert args.specified_save_path != ""
                 save(selected_data,os.path.join(args.specified_save_path,"NL_{}_RT{}_SD{}.pkl".format(args.dataset,rt,args.seed)))
-
+            train_data['confidence'] = np.array(p_label_confidence)
+            sampler(args,train_data)
+            
 
         
 
@@ -302,10 +373,9 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=4e-7, help='learning rate')
     parser.add_argument('--lr_scale', type=int, default=100, help='as named')
     parser.add_argument('--epoch', type=int, default=10, help='as named')
-    parser.add_argument("--specified_save_path", type=str,default="", help="as named")
+    parser.add_argument("--specified_save_path", type=str,default="", help="selected clean data will be stored here")
 
 
-    """tac"""
     parser.add_argument('--n_rel', type=int, default=41, help='as named') 
     parser.add_argument("--train_path", type=str,
                         default="tac_annotation.pkl", help="as named")
@@ -315,9 +385,11 @@ if __name__ == "__main__":
                         default="outputs", help="as named")
     parser.add_argument('--ln_neg', type=int, default=41,
                         help='number of negative labels on single image for training (ex. 110 for cifar100)')
-
-
-    """communal"""
+    # sampler argument 
+    parser.add_argument("--eta", type=float, help="as named")
+    parser.add_argument("--delta", type=int, help="as named")
+    parser.add_argument("--dataset", type=str, default=None, help="as named")
+    parser.add_argument("--label2id", type=str, default=None, help="as named")
 
     parser.add_argument('--save_info', type=str,
                         default="", help='as named')

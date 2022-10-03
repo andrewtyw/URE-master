@@ -1,3 +1,33 @@
 # URE-master
-- run `main.sh` to get the main result.(Note that `main.sh` should be run first)
-- run `run_extra_data.sh` to get the result of running on extra data.
+Code for the paper "XXXX"
+## Environment
+In order to exactly reproduce the result, please setup the environment by `requirements.txt`
+## Dataset
+`TACRED` is not provided here, you could obtain it from [here](https://nlp.stanford.edu/projects/tacred/). After downloading please put `{train,dev,test}.json` into `/URE-master/data/tac`.
+## Run
+1. Clean Data Finetune
+```
+sh CleanDataFinetune.sh
+```
+2. Class-aware Clean Data Finetune (Dynamic)
+```
+sh ClassawareCleanDataFinetune.sh
+```
+3. Clean Data Finetune + extra data
+```
+sh CleanDataFinetune_plus_extraData.sh
+```
+4. Class-aware Clean Data Finetune (Dynamic) + extra data
+```
+sh ClassawareCleanDataFinetune_plus_extraData.sh
+```
+## Citation
+```
+@inproceedings{XX,
+  title={XX},
+  author={XX},
+  booktitle={XX},
+  pages={XX},
+  year={2022}
+}
+```

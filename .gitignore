@@ -29,3 +29,5 @@ data/tac/*.pkl
 main_extra.sh
 data/wiki/*.pkl
 TEST*.sh
+main.sh
+run_extra_data.sh

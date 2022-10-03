@@ -31,6 +31,7 @@ parser.add_argument("--given_save_path", type=str,default=None, help="make it to
 
 parser.add_argument("--dataset", type=str,default="wiki",choices=['tac','wiki'], help="as named")
 parser.add_argument("--dict_path", type=str,default=None, help="fine-tuned model path")
+parser.add_argument("--before_extra_dict_path", type=str,default=None, help="the model path before finetuned by extra data")
 parser.add_argument("--load_dict", type=bool,default=False, help="if need to load the pre-trained weight,use in fewshot")
 parser.add_argument("--mode", type=str,default="test", help="annotate train set or test set")
 parser.add_argument("--run_evaluation_path", type=str,default="test.pkl", help="path need to evaluate")
@@ -58,7 +59,7 @@ cuda_index = args.cuda_index
 load_dict = args.load_dict
 dict_path = args.dict_path
 seed = args.seed
-
+before_extra_dict_path = args.before_extra_dict_path
 
 get_optimal_threshold = True if dataset=="tac" else False
 current_time = TIME

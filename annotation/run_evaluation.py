@@ -234,17 +234,17 @@ for configuration in config:
     configuration["top-1"] = top1_acc
     configuration["top-2"], top2_p_rel = top_k_accuracy(applied_threshold_output, labels, k=2, id2labels=id2labels)
     configuration["top-3"], top3_p_rel = top_k_accuracy(applied_threshold_output, labels, k=3, id2labels=id2labels)
-    print("*"*20)
+    print("*"*20,"Micro result","*"*20)
     print("f1(micro):{:.6f}".format(f1))
     print("precision(micro):{:.6f}".format(pre))
     print("recall(micro):{:.6f}".format(rec))
-    print("*"*20)
+    print("*"*20,"Macro result","*"*20)
     print("f1(macro):{:.6f}".format(macro_f1))
     print("precision(macro):{:.6f}".format(macro_pre))
     print("recall(macro):{:.6f}".format(macro_rec))
     
     
-    
+    print("*"*20,"Top K accuracy","*"*20)
     for i in range(1,4):
         print("top{} acc={:.6f}".format(i, configuration["top-{}".format(i)]))
     
