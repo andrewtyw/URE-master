@@ -1,5 +1,4 @@
 # URE-master
-Code for the paper "XXXX"
 ## Environment
 In order to exactly reproduce the result, please setup the environment by `requirements.txt`
 ## Dataset
@@ -23,13 +22,4 @@ sh CleanDataFinetune_plus_extraData.sh
 sh ClassawareCleanDataFinetune_plus_extraData.sh
 ```
 **We provided the logs for each `.sh` file in /logs_sample**
-## Citation
-```
-@inproceedings{XX,
-  title={XX},
-  author={XX},
-  booktitle={XX},
-  pages={XX},
-  year={2022}
-}
-```
+
